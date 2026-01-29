@@ -1,0 +1,1431 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+    <title>Payment Endorsement Platform</title>
+
+    <!-- External Dependencies -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <style>
+      /* --- 1. DESIGN SYSTEM & VARIABLES --- */
+      :root {
+        --bg-color: #f5f5f4; /* Stone-100: Warm Grey Background */
+        --paper-bg: #fffbf5; /* Warm Cream: Table Surface */
+        --text-main: #44403c; /* Stone-700: Charcoal Text */
+        --text-muted: #78716c; /* Stone-500: Muted Grey */
+        --cell-border: #e7e5e4; /* Stone-200: Soft Borders */
+
+        --selection-bg: rgba(214, 211, 209, 0.4);
+        --selection-border: #a8a29e;
+        --active-focus: #57534e; /* Stone-600 */
+
+        --header-bg: #44403c; /* Stone-700 */
+        --accent-green: #587b6d; /* Muted Sage */
+      }
+
+      /* --- 2. GLOBAL RESET & BASE --- */
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        overflow-x: hidden;
+        margin: 0;
+        padding: 0;
+      }
+      [v-cloak] {
+        display: none;
+      }
+
+      /* --- 3. TABLE ARCHITECTURE (MOBILE-FIRST) --- */
+      .table-viewport {
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: 75vh;
+        border: 1px solid var(--cell-border);
+        background: var(--paper-bg);
+        border-radius: 12px;
+        position: relative;
+        -webkit-overflow-scrolling: touch; /* Smooth iOS scroll */
+      }
+
+      table {
+        min-width: 1600px; /* Forces horizontal scroll on smaller screens */
+        width: 100%;
+        border-collapse: separate; /* Required for Sticky headers/cols */
+        border-spacing: 0;
+        table-layout: fixed;
+        user-select: none;
+      }
+
+      /* Sticky Headers */
+      th {
+        position: sticky;
+        top: 0;
+        background: var(--header-bg);
+        z-index: 100;
+        font-size: 10px;
+        padding: 12px 8px;
+        border-bottom: 2px solid #292524;
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+        color: #f5f5f4;
+        letter-spacing: 0.05em;
+        text-align: center;
+        text-transform: uppercase;
+      }
+
+      /* --- 4. STICKY COLUMN LOGIC (CONTEXT PERSISTENCE) --- */
+      /* Column 1: Row Index (#) */
+      .sticky-col-1 {
+        position: sticky;
+        left: 0;
+        z-index: 80;
+        width: 40px !important;
+        min-width: 40px !important;
+        background-color: #f5f5f4 !important;
+        border-right: 2px solid var(--cell-border) !important;
+      }
+
+      /* Column 2: Payor/Payee Context (Freeze this so user knows who the data belongs to) */
+      ./* --- FIX FOR WHITE HEADERS --- */
+  /* This ensures that headers that are also sticky columns keep the dark background */
+  th.sticky-col-1, 
+  th.sticky-col-2 {
+        background-color: var(--header-bg) !important; /* Force Stone-700 */
+        color: #f5f5f4 !important; /* Force White Text */
+        z-index: 110; /* Keep it above the row cells */
+      }
+
+      /* Optional: Add a subtle border to separate the sticky header from the sticky column */
+      th.sticky-col-1,
+      th.sticky-col-2 {
+        border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+      }
+
+      /* Ensure headers for sticky columns stay on top of everything */
+      th.sticky-col-1,
+      th.sticky-col-2 {
+        z-index: 110;
+      }
+
+      /* --- 5. CELL & INPUT STYLING --- */
+      td {
+        border-right: 1px solid var(--cell-border);
+        border-bottom: 1px solid var(--cell-border);
+        position: relative;
+        min-height: 44px;
+        padding: 0 !important;
+        vertical-align: top;
+      }
+
+      /* Multi-line Auto-expanding Textarea */
+      textarea {
+        width: 100%;
+        height: 100%;
+        min-height: 42px;
+        padding: 10px 8px;
+        font-size: 12px;
+        border: none;
+        outline: none;
+        resize: none;
+        display: block;
+        background: transparent;
+        color: var(--text-main);
+        overflow: hidden;
+        line-height: 1.5;
+        box-sizing: border-box;
+        transition: background 0.2s;
+      }
+
+      /* State Highlighting */
+      .td-selected {
+        background-color: rgba(59, 130, 246, 0.1) !important; /* Soft Blue */
+        box-shadow: inset 0 0 0 1px #3b82f6;
+        z-index: 10;
+      }
+
+      .td-active-focus {
+        box-shadow: inset 0 0 0 2px #2563eb !important;
+        background: #ffffff !important;
+        z-index: 20;
+      }
+
+      .is-dragging {
+        user-select: none;
+      }
+
+      .is-dragging textarea {
+        pointer-events: none;
+      }
+
+      /* --- 6. CUSTOM COMPONENTS UI --- */
+      /* Custom Source Registry Dropdown */
+      #source-select-container .dropdown-item {
+        padding: 12px 16px;
+        cursor: pointer;
+        border-bottom: 1px solid #f5f5f4;
+        transition: all 0.2s;
+      }
+      #source-select-container .dropdown-item:hover {
+        background-color: #f5f5f4;
+      }
+      #source-select-container .dropdown-item.highlighted {
+        background-color: #f5f5f4;
+        border-left: 4px solid var(--active-focus);
+      }
+      /* --- UPDATED TOAST STACKING & SCROLLING --- */
+      .toast-container {
+        max-height: 80vh; /* Prevents toasts from covering the whole screen */
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 10px;
+        display: flex;
+        flex-direction: column-reverse; /* Newest toasts appear at the bottom */
+        gap: 12px;
+        pointer-events: none; /* Allow clicks through the container */
+        scrollbar-width: thin;
+        scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+      }
+
+      /* Chrome/Safari Scrollbar for Toasts */
+      .toast-container::-webkit-scrollbar {
+        width: 4px;
+      }
+      .toast-container::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 10px;
+      }
+
+      /* Ensure the individual toast remains clickable even if container isn't */
+      .toast-item {
+        pointer-events: auto;
+        width: 320px; /* Fixed width to prevent jumping during scroll */
+      }
+
+      /* Toasts & Spinners */
+      .toast-spinner {
+        animation: spin 1s linear infinite;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-top-color: #fff;
+        border-radius: 50%;
+        width: 14px;
+        height: 14px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* --- 7. MOBILE ADAPTATIONS --- */
+      @media (max-width: 1024px) {
+        /* Thicker tap targets for mobile */
+        textarea {
+          font-size: 14px;
+          padding: 12px 8px;
+        }
+
+        /* Fixed Bottom Navigation (Mobile Only) */
+        .mobile-action-bar {
+          position: fixed;
+          bottom: 24px;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 200;
+          display: flex;
+          gap: 12px;
+          background: rgba(255, 255, 255, 0.9);
+          backdrop-filter: blur(8px);
+          padding: 12px;
+          border-radius: 20px;
+          border: 1px solid var(--cell-border);
+          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Hide Desktop-only Header Buttons on Mobile */
+        .desktop-only {
+          display: none !important;
+        }
+      }
+
+      /* Transition Animations */
+      .fade-enter-active,
+      .fade-leave-active {
+        transition: opacity 0.3s;
+      }
+      .fade-enter-from,
+      .fade-leave-to {
+        opacity: 0;
+      }
+
+      .toast-enter-active,
+      .toast-leave-active {
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+      .toast-enter-from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.9);
+      }
+      .toast-leave-to {
+        opacity: 0;
+        transform: scale(0.8);
+      }
+    </style>
+  </head>
+
+  <body class="antialiased">
+    <div id="app" v-cloak class="min-h-screen flex flex-col p-4 lg:p-8" :class="{'is-dragging': isDragging}">
+      <!-- 1. NOTIFICATION SYSTEM (STACKED & SCROLLABLE) -->
+      <div class="fixed bottom-6 right-6 z-[200] toast-container">
+        <transition-group name="toast">
+          <div
+            v-for="toast in toasts"
+            :key="toast.id"
+            class="toast-item bg-zinc-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-zinc-700"
+          >
+            <div class="toast-spinner"></div>
+            <div class="flex flex-col text-left overflow-hidden">
+              <span class="text-[10px] text-zinc-400 font-bold uppercase tracking-tight">System Message</span>
+              <span class="text-xs truncate w-full" :title="toast.msg">{{ toast.msg }}</span>
+            </div>
+          </div>
+        </transition-group>
+      </div>
+
+      <!-- 2. SYSTEM MODAL -->
+      <transition name="fade">
+        <div
+          v-if="modal.show"
+          class="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm"
+        >
+          <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-zinc-200">
+            <div class="p-6 text-center">
+              <h3 class="text-lg font-bold mb-1">{{ modal.title }}</h3>
+              <p class="text-zinc-500 text-sm mb-4 leading-relaxed">{{ modal.message }}</p>
+              <div v-if="modal.showInput">
+                <input
+                  v-model="modal.inputValue"
+                  type="text"
+                  class="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-stone-400"
+                  placeholder="Note here..."
+                />
+              </div>
+            </div>
+            <div class="flex border-t">
+              <button
+                v-if="!modal.hideCancel"
+                @click="modal.show = false"
+                class="flex-1 py-4 text-sm font-bold text-zinc-400 uppercase tracking-widest"
+              >
+                Cancel
+              </button>
+              <button
+                @click="handleModalConfirm"
+                class="flex-1 py-4 text-sm font-bold text-indigo-600 uppercase tracking-widest"
+              >
+                {{ modal.confirmText }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </transition>
+
+      <!-- 3. HEADER -->
+      <header class="flex flex-col lg:grid lg:grid-cols-3 items-center gap-4 mb-8">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 bg-black rounded-lg text-white flex items-center justify-center font-bold shadow-md">
+            PEP
+          </div>
+          <div class="text-left">
+            <h1 class="text-xs lg:text-base font-black uppercase tracking-tight">Payment Endorsement Platform</h1>
+            <p class="text-[9px] text-zinc-400 font-bold uppercase">Payment Coordination Unit</p>
+          </div>
+        </div>
+
+        <div class="hidden lg:flex justify-center w-full">
+          <img
+            src="https://raw.githubusercontent.com/mrjeronluther/Memo-Routing-Landing-Page/main/WhatsApp%20Image%202025-06-05%20at%2015.44.42_3fc69535.jpg"
+            class="h-10 border rounded shadow-sm"
+          />
+        </div>
+
+        <!-- Desktop Buttons -->
+        <div class="hidden lg:flex justify-end gap-2">
+          <button
+            @click="submitToDatabases"
+            :disabled="isSubmitting"
+            class="bg-[#587B6D] hover:bg-[#4a6b5d] disabled:bg-[#aabfb7] text-white text-[11px] font-bold px-4 py-2 rounded-lg uppercase shadow-md flex items-center gap-2 transition-all"
+          >
+            <div v-if="isSubmitting" class="toast-spinner"></div>
+            <span>{{ isSubmitting ? 'Processing...' : 'Submit' }}</span>
+          </button>
+          <button
+            @click="addRow"
+            class="bg-[#57534e] hover:bg-[#44403c] text-white text-[11px] font-bold px-4 py-2 rounded-lg uppercase shadow-md transition-all"
+          >
+            Add Row
+          </button>
+        </div>
+      </header>
+
+      <!-- 4. SOURCE REGISTRY (CUSTOM DROPDOWN) -->
+      <main class="flex-grow">
+        <div
+          class="bg-[#fffbf5] border border-stone-200 p-4 rounded-xl mb-4 flex flex-col md:flex-row items-center gap-4 shadow-sm relative"
+        >
+          <div class="w-full md:w-1/2 relative" id="source-select-container">
+            <label class="text-[10px] font-black text-[#57534e] uppercase mb-1.5 block">Select Source File</label>
+
+            <div class="relative">
+              <input
+                v-model="selectedSourceName"
+                @focus="showSourceDropdown = true"
+                @input="showSourceDropdown = true"
+                @keydown.down="highlightNextSource"
+                @keydown.up="highlightPrevSource"
+                @keydown.enter="selectHighlightedSource"
+                placeholder="Search Source File Name..."
+                class="w-full bg-[#f5f5f4] border border-stone-200 rounded-lg px-4 py-2.5 text-xs focus:ring-2 focus:ring-[#a8a29e] outline-none shadow-inner text-stone-700"
+              />
+
+              <div
+                v-if="showSourceDropdown && filteredSources.length"
+                class="absolute left-0 right-0 mt-1 bg-white border border-stone-200 rounded-xl shadow-2xl z-[500] max-h-60 overflow-y-auto"
+              >
+                <div
+                  v-for="(file, idx) in filteredSources"
+                  :key="file.id"
+                  @mousedown="selectSource(file)"
+                  :class="['px-4 py-3 cursor-pointer border-b border-stone-50 last:border-0 flex justify-between items-center', sourceHighlightIdx === idx ? 'bg-stone-100' : 'hover:bg-stone-50']"
+                >
+                  <div class="flex flex-col">
+                    <span class="text-[11px] font-bold text-stone-700 uppercase">{{ file.name }}</span>
+                    <span class="text-[9px] text-stone-400 font-medium uppercase"
+                      >Tab: {{ file.tab || 'Default' }}</span
+                    >
+                  </div>
+                  <div v-if="selectedSourceName === file.name" class="text-emerald-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path
+                        fill-rule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Connection Alerts -->
+          <div
+            v-if="!selectedSourceId"
+            class="w-full md:w-auto text-[10px] text-rose-900/70 font-bold animate-pulse bg-rose-50 border border-rose-100 px-4 py-2 rounded-lg text-center"
+          >
+            ! PLEASE SELECT SOURCE FILE TO ENABLE LOOKUP
+          </div>
+          <div
+            v-else
+            class="w-full md:w-auto flex flex-col justify-center text-[10px] text-[#3f5248] bg-[#f0fdf4] border border-[#dcfce7] px-4 py-2 rounded-lg"
+          >
+            <div class="font-black">✓ SOURCE CONNECTED</div>
+            <div class="text-[9px] opacity-80 mt-0.5">TAB: {{ selectedSourceTab || 'Auto' }}</div>
+          </div>
+        </div>
+
+        <!-- 5. THE STICKY TABLE GRID -->
+        <div class="table-viewport shadow-2xl">
+          <table @mousedown="isDragging = true" @mouseup="isDragging = false">
+            <thead>
+              <tr>
+                <th class="sticky-col-1">#</th>
+                <!-- We stick the Payor Name (Index 2) for mobile context -->
+                <th v-for="(h, i) in headers" :key="h" :class="{'sticky-col-2': i === 2}">{{ h }}</th>
+                <th class="w-16">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke-width="2"
+                    stroke="currentColor"
+                    class="w-4 h-4 mx-auto opacity-50"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                    />
+                  </svg>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, rIdx) in grid" :key="rIdx">
+                <td class="sticky-col-1 text-center font-bold text-stone-400 text-[10px] select-none">
+                  {{ rIdx + 1 }}
+                </td>
+                <td
+                  v-for="(cell, cIdx) in row"
+                  :key="cIdx"
+                  :class="{
+           'td-selected': isSelected(rIdx, cIdx), 
+           'td-active-focus': activeFocus.r === rIdx && activeFocus.c === cIdx, 
+           'sticky-col-2': cIdx === 2
+         }"
+                  @mousedown="handleMouseDown(rIdx, cIdx)"
+                  @mouseenter="handleMouseEnter(rIdx, cIdx)"
+                >
+                  <textarea
+                    v-model="grid[rIdx][cIdx]"
+                    @focus="setActive(rIdx, cIdx)"
+                    @input="(e) => { onCellValueChange(rIdx, cIdx); handleResize(e); }"
+                    @blur="handleBlur(rIdx, cIdx)"
+                  ></textarea>
+                </td>
+                <td class="text-center">
+                  <button @click="confirmRemoveRow(rIdx)" class="text-rose-400 hover:text-rose-600 font-bold px-2">
+                    ×
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+
+      <!-- 6. MOBILE FLOATING ACTION BAR -->
+      <div class="lg:hidden mobile-action-bar">
+        <button
+          @click="addRow"
+          class="bg-stone-700 text-white p-4 rounded-2xl shadow-lg active:scale-95 transition-transform"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
+        <button
+          @click="submitToDatabases"
+          :disabled="isSubmitting"
+          class="bg-[#587B6D] text-white px-8 py-4 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] flex items-center gap-3 shadow-lg active:scale-95 transition-transform"
+        >
+          <div v-if="isSubmitting" class="toast-spinner"></div>
+          <span>{{ isSubmitting ? 'Syncing...' : 'Submit Endorsement' }}</span>
+        </button>
+      </div>
+    </div>
+
+    <script>
+      const { createApp, ref, reactive, onMounted, onUnmounted, nextTick, computed, watch } = Vue;
+
+      createApp({
+        setup() {
+          // --- CONFIGURATION ---
+          const headers = [
+            "YEAR",
+            "MONTH",
+            "PAYOR NAME",
+            "PAYEE NAME",
+            "PROPERTY",
+            "LOCATION",
+            "SECTOR",
+            "KINDS OF SERVICE",
+            "RFP NUMBER",
+            "CONTRACT NO",
+            "CONTRACT AMOUNT",
+            "INVOICE NO.",
+            "BILLING PERIOD",
+            "SOA AMOUNT",
+            "GENERAL STATUS",
+            "REMARKS",
+          ];
+          const STORAGE_KEY = "pep_v3_final";
+          const SOURCE_KEY = "pep_v3_source_name";
+          const CONTRACT_COL_INDEX = headers.indexOf("RFP NUMBER");
+
+          // --- DATA STATE ---
+          const grid = reactive(
+            JSON.parse(localStorage.getItem(STORAGE_KEY)) ||
+              Array.from({ length: 9 }, () => Array(headers.length).fill(""))
+          );
+          const rowComments = reactive({});
+          const confirmedRFPs = reactive([]);
+
+          // --- SOURCE FILE STATE ---
+          const sourceFileList = ref([]);
+          const selectedSourceName = ref(localStorage.getItem(SOURCE_KEY) || "");
+          const selectedSourceId = ref("");
+          const selectedSourceTab = ref("");
+          const lookupQueue = ref([]);
+          const isProcessingQueue = ref(false); // Guard to ensure only one runs at a time
+          const processingQueue = ref(false);
+
+          // THE WORKER: Processes the line one-by-one
+          const processLookupQueue = () => {
+            // If we're already working or the line is empty, stop.
+            if (isProcessingQueue.value || lookupQueue.value.length === 0) {
+              isProcessingQueue.value = false;
+              return;
+            }
+
+            isProcessingQueue.value = true;
+            const rIdx = lookupQueue.value.shift(); // Get the first row in line
+
+            // Safety: Check if row still exists and has an RFP
+            if (!grid[rIdx] || !grid[rIdx][CONTRACT_COL_INDEX] || !selectedSourceId.value) {
+              isProcessingQueue.value = false;
+              processLookupQueue(); // Move to next
+              return;
+            }
+
+            const val = String(grid[rIdx][CONTRACT_COL_INDEX]).trim();
+            const tid = addToast(`[Queue] Syncing Row ${rIdx + 1}: ${val}`, 15000);
+
+            google.script.run
+              .withSuccessHandler((res) => {
+                // Remove Toast
+                const tIdx = toasts.findIndex((t) => t.id === tid);
+                if (tIdx !== -1) toasts.splice(tIdx, 1);
+
+                if (res && res.success) {
+                  res.data.forEach((v, i) => {
+                    if (i < 15) grid[rIdx][i] = v;
+                  });
+                  formatCurrencyCell(rIdx, 10);
+                  formatCurrencyCell(rIdx, 13);
+                  persist();
+                }
+
+                // 160 IQ MOVE: Always unlock and move to next, even if result was null
+                isProcessingQueue.value = false;
+                processLookupQueue();
+              })
+              .withFailureHandler(() => {
+                const tIdx = toasts.findIndex((t) => t.id === tid);
+                if (tIdx !== -1) toasts.splice(tIdx, 1);
+
+                isProcessingQueue.value = false;
+                processLookupQueue(); // Move to next even on error
+              })
+              .lookupContractData(val, selectedSourceId.value, selectedSourceTab.value);
+          };
+
+          // --- UI STATE ---
+          const toasts = reactive([]);
+          const isSubmitting = ref(false);
+          const modal = reactive({
+            show: false,
+            title: "",
+            message: "",
+            showInput: false,
+            inputValue: "",
+            onConfirm: null,
+            confirmText: "OK",
+            hideCancel: false,
+          });
+          const anchor = reactive({ r: -1, c: -1 }); // Start point of drag
+          const current = reactive({ r: -1, c: -1 }); // End point of drag
+          const activeFocus = reactive({ r: -1, c: -1 }); // The actual input focus
+          const isDragging = ref(false);
+
+          const activeRowToasts = reactive({}); // { rowIndex: toastId }
+          const debounceTimers = reactive({}); // { rowIndex: timerId }
+
+          const addToast = (msg, duration = 5000) => {
+            const id = Date.now();
+            toasts.push({ id, msg });
+
+            // Auto-remove the Toast DIV after duration
+            setTimeout(() => {
+              const idx = toasts.findIndex((t) => t.id === id);
+              if (idx !== -1) toasts.splice(idx, 1);
+
+              // Clean up trackers if they point to this expired toast
+              Object.keys(activeRowToasts).forEach((k) => {
+                if (activeRowToasts[k] === id) delete activeRowToasts[k];
+              });
+            }, duration);
+
+            return id;
+          };
+
+          // --- STATE ---
+          const showSourceDropdown = ref(false);
+          const sourceHighlightIdx = ref(-1);
+
+          // --- COMPUTED ---
+          const filteredSources = computed(() => {
+            if (!selectedSourceName.value) return sourceFileList.value;
+            return sourceFileList.value.filter((f) =>
+              f.name.toLowerCase().includes(selectedSourceName.value.toLowerCase())
+            );
+          });
+
+          // --- METHODS ---
+          const selectSource = (file) => {
+            selectedSourceName.value = file.name;
+            selectedSourceId.value = file.id;
+            selectedSourceTab.value = file.tab;
+            showSourceDropdown.value = false;
+            sourceHighlightIdx.value = -1;
+            onSourceChange(); // This triggers the connection logic
+          };
+
+          const highlightNextSource = (e) => {
+            e.preventDefault(); // Manual prevent to avoid _withMods error
+            if (sourceHighlightIdx.value < filteredSources.value.length - 1) {
+              sourceHighlightIdx.value++;
+            }
+          };
+
+          const highlightPrevSource = (e) => {
+            e.preventDefault(); // Manual prevent
+            if (sourceHighlightIdx.value > 0) {
+              sourceHighlightIdx.value--;
+            }
+          };
+
+          const selectHighlightedSource = (e) => {
+            e.preventDefault(); // Manual prevent
+            if (sourceHighlightIdx.value > -1) {
+              selectSource(filteredSources.value[sourceHighlightIdx.value]);
+            }
+          };
+
+          // Handle closing dropdown when clicking away
+          const handleClickOutside = (e) => {
+            const container = document.getElementById("source-select-container");
+            if (container && !container.contains(e.target)) {
+              showSourceDropdown.value = false;
+              sourceHighlightIdx.value = -1;
+            }
+          };
+
+          // --- PERSISTENCE & FORMATTING ---
+          const persist = () => {
+            try {
+              // Filter out completely empty trailing rows if you want to save space,
+              // but keep the reactive object sync'd
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(grid));
+              if (selectedSourceName.value) {
+                localStorage.setItem(SOURCE_KEY, selectedSourceName.value);
+              }
+            } catch (e) {
+              console.error("Storage persist failed", e);
+            }
+          };
+
+          const onSourceChange = () => {
+            const found = sourceFileList.value.find((f) => f.name === selectedSourceName.value);
+            if (found) {
+              selectedSourceId.value = found.id;
+              selectedSourceTab.value = found.tab;
+            } else {
+              selectedSourceId.value = "";
+              selectedSourceTab.value = "";
+            }
+            persist();
+          };
+
+          const formatCurrencyCell = (r, c) => {
+            let val = String(grid[r][c]).replace(/,/g, "").trim();
+            if (!val || isNaN(val)) return;
+            grid[r][c] = parseFloat(val).toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            });
+          };
+
+          const handleBlur = (r, c) => {
+            if (c === 10 || c === 13) {
+              formatCurrencyCell(r, c);
+              persist();
+            }
+          };
+
+          // --- AUTO-RESIZE LOGIC ---
+          const adjustHeight = (el) => {
+            if (!el) return;
+            el.style.height = "auto";
+            el.style.height = el.scrollHeight + "px";
+          };
+          const handleResize = (event) => {
+            const el = event.target;
+            el.style.height = "auto";
+            el.style.height = el.scrollHeight + "px";
+          };
+
+          // --- GRID SELECTION LOGIC ---
+          const handleMouseDown = (r, c) => {
+            isDragging.value = true;
+            anchor.r = r;
+            anchor.c = c;
+            current.r = r;
+            current.c = c;
+          };
+
+          const handleMouseEnter = (r, c) => {
+            if (isDragging.value) {
+              current.r = r;
+              current.c = c;
+            }
+          };
+          const isSelected = (r, c) => {
+            if (anchor.r === -1) return false;
+            const minR = Math.min(anchor.r, current.r),
+              maxR = Math.max(anchor.r, current.r);
+            const minC = Math.min(anchor.c, current.c),
+              maxC = Math.max(anchor.c, current.c);
+            return r >= minR && r <= maxR && c >= minC && c <= maxC;
+          };
+
+          const setActive = (r, c) => {
+            activeFocus.r = r;
+            activeFocus.c = c;
+            // If we just clicked, reset the selection area to this single cell
+            if (!isDragging.value) {
+              anchor.r = r;
+              anchor.c = c;
+              current.r = r;
+              current.c = c;
+            }
+          };
+
+          // --- CLIPBOARD & KEYBOARD ENGINE ---
+          const handleCopy = (e) => {
+            if (anchor.r === -1) return;
+
+            // If user is editing text INSIDE a cell and has text highlighted, let browser copy that text normally
+            if (document.activeElement.tagName === "TEXTAREA" && window.getSelection().toString().length > 0) return;
+
+            const minR = Math.min(anchor.r, current.r),
+              maxR = Math.max(anchor.r, current.r);
+            const minC = Math.min(anchor.c, current.c),
+              maxC = Math.max(anchor.c, current.c);
+
+            let rows = [];
+            for (let r = minR; r <= maxR; r++) {
+              let cols = [];
+              for (let c = minC; c <= maxC; c++) {
+                cols.push(grid[r][c] || "");
+              }
+              rows.push(cols.join("\t")); // Tab separated
+            }
+
+            e.clipboardData.setData("text/plain", rows.join("\n"));
+            e.preventDefault();
+            //addToast("Selection Copied", 2000);
+          };
+
+          const processNextInQueue = () => {
+            // 1. If we are already processing or the queue is empty, stop.
+            if (processingQueue.value || lookupQueue.value.length === 0) {
+              processingQueue.value = false;
+              return;
+            }
+
+            // 2. Lock the processor and get the next row index
+            processingQueue.value = true;
+            const rIdx = lookupQueue.value.shift();
+
+            // 3. Validate the row and selection
+            const val = String(grid[rIdx][CONTRACT_COL_INDEX]).trim();
+
+            // Basic validation before calling server
+            if (!val || val.length < 3 || !selectedSourceId.value) {
+              processingQueue.value = false;
+              processNextInQueue(); // Move to next item immediately
+              return;
+            }
+
+            // 4. Visual feedback for the user
+            const tid = addToast(`[Queue] Processing Row ${rIdx + 1}: ${val}...`, 15000);
+
+            // 5. Execute server-side lookup
+            google.script.run
+              .withSuccessHandler((res) => {
+                // Cleanup Toast
+                const tIdx = toasts.findIndex((t) => t.id === tid);
+                if (tIdx !== -1) toasts.splice(tIdx, 1);
+
+                // Handle Result (Similar to your old logic)
+                if (res && res.success) {
+                  res.data.forEach((v, i) => {
+                    if (i < 15) grid[rIdx][i] = v;
+                  });
+
+                  if (res.validation) {
+                    if (res.validation.type === "BLOCK") {
+                      showAppModal(
+                        "Security Block",
+                        res.validation.message,
+                        () => {
+                          grid[rIdx][CONTRACT_COL_INDEX] = "";
+                          grid[rIdx][14] = "";
+                          persist();
+                        },
+                        false,
+                        true
+                      );
+                    } else if (res.validation.type === "MODAL_WARN") {
+                      showAppModal("Endorsement Alert", res.validation.message);
+                    } else if (res.validation.type === "TOAST_INFO") {
+                      addToast(res.validation.message, 5000);
+                    }
+                  }
+
+                  formatCurrencyCell(rIdx, 10);
+                  formatCurrencyCell(rIdx, 13);
+                  persist();
+                }
+
+                // 6. UNLOCK AND RUN NEXT
+                processingQueue.value = false;
+                setTimeout(processNextInQueue, 100); // Slight delay to prevent overlap
+              })
+              .withFailureHandler(() => {
+                const tIdx = toasts.findIndex((t) => t.id === tid);
+                if (tIdx !== -1) toasts.splice(tIdx, 1);
+
+                processingQueue.value = false;
+                processNextInQueue();
+              })
+              .lookupContractData(val, selectedSourceId.value, selectedSourceTab.value);
+          };
+
+          /* --- 3. MODIFIED PASTE HANDLER --- */
+          const handlePaste = (e) => {
+            const pastedText = e.clipboardData.getData("text");
+            if (!pastedText) return;
+            e.preventDefault();
+
+            const rows = pastedText
+              .split(/\r?\n/)
+              .filter((line) => line.trim().length > 0)
+              .map((row) => row.split("\t"));
+            if (rows.length === 0) return;
+
+            const startR = anchor.r !== -1 ? Math.min(anchor.r, current.r) : activeFocus.r;
+            const startC = anchor.c !== -1 ? Math.min(anchor.c, current.c) : activeFocus.c;
+            if (startR === -1 || startC === -1) return;
+
+            const isRange = anchor.r !== current.r || anchor.c !== current.c;
+            const pRows = rows.length;
+            const pCols = rows[0].length;
+            const maxR = isRange ? Math.max(anchor.r, current.r) : startR + pRows - 1;
+            const maxC = isRange ? Math.max(anchor.c, current.c) : startC + pCols - 1;
+
+            for (let r = startR; r <= maxR; r++) {
+              if (!grid[r]) break;
+              for (let c = startC; c <= maxC; c++) {
+                if (c >= headers.length) break;
+                const sR = (r - startR) % pRows;
+                const sC = (c - startC) % pCols;
+                let val = (rows[sR][sC] || "").trim().replace(/^"|"$/g, "").replace(/""/g, '"');
+                grid[r][c] = val;
+
+                // If we hit an RFP column, add to the sequential queue
+                if (c === CONTRACT_COL_INDEX && val.length > 2) {
+                  if (!lookupQueue.value.includes(r)) {
+                    lookupQueue.value.push(r);
+                  }
+                }
+              }
+            }
+            persist();
+            processLookupQueue(); // Start the engine
+
+            nextTick(() =>
+              document.querySelectorAll("textarea").forEach((t) => {
+                t.style.height = "auto";
+                t.style.height = t.scrollHeight + "px";
+              })
+            );
+          };
+
+          const handleKeyDown = (e) => {
+            // 1. INPUT SAFETY CHECK
+            // If the user is typing in the Modal input or the Source Search bar,
+            // let the browser handle keys normally.
+            if (document.activeElement.tagName === "INPUT") return;
+
+            // 2. DEFINE SELECTION BOUNDARIES
+            const minR = Math.min(anchor.r, current.r);
+            const maxR = Math.max(anchor.r, current.r);
+            const minC = Math.min(anchor.c, current.c);
+            const maxC = Math.max(anchor.c, current.c);
+
+            const isMultiSelection = minR !== maxR || minC !== maxC;
+            const isFocusedInsideCell = document.activeElement.tagName === "TEXTAREA";
+
+            // 3. RANGE DELETE LOGIC (Backspace or Delete)
+            if (e.key === "Delete" || e.key === "Backspace") {
+              // We only clear the range if:
+              // - Multiple cells are selected
+              // - OR a single cell is selected but the user ISN'T actively editing the text inside it
+              if (isMultiSelection || !isFocusedInsideCell) {
+                if (anchor.r === -1) return; // No selection exists
+
+                // Prevent the browser from navigating "Back" one page
+                e.preventDefault();
+
+                for (let r = minR; r <= maxR; r++) {
+                  for (let c = minC; c <= maxC; c++) {
+                    if (grid[r]) {
+                      grid[r][c] = "";
+                    }
+                  }
+                }
+
+                persist();
+                // Optional: You could trigger lookups here if you wanted deleting an RFP
+                // to clear its associated data automatically.
+              }
+              // If isFocusedInsideCell is true and it's a single cell,
+              // we do nothing here so the user can delete characters normally.
+            }
+
+            // 4. NAVIGATION LOGIC (Arrow Keys)
+            // Only navigate if we aren't actively editing text inside a cell
+            if (!isFocusedInsideCell && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+              e.preventDefault();
+
+              let nextR = activeFocus.r;
+              let nextC = activeFocus.c;
+
+              if (e.key === "ArrowUp" && nextR > 0) nextR--;
+              if (e.key === "ArrowDown" && nextR < grid.length - 1) nextR++;
+              if (e.key === "ArrowLeft" && nextC > 0) nextC--;
+              if (e.key === "ArrowRight" && nextC < headers.length - 1) nextC++;
+
+              // Update focus and reset selection to the new single cell
+              activeFocus.r = nextR;
+              activeFocus.c = nextC;
+              anchor.r = nextR;
+              anchor.c = nextC;
+              current.r = nextR;
+              current.c = nextC;
+
+              // Auto-focus the textarea of the cell we just moved to
+              nextTick(() => {
+                const rowEls = document.querySelectorAll("tbody tr");
+                if (rowEls[nextR]) {
+                  const cellEls = rowEls[nextR].querySelectorAll("textarea");
+                  if (cellEls[nextC]) cellEls[nextC].focus();
+                }
+              });
+            }
+          };
+
+          // --- BACKEND / GAS INTEGRATION ---
+          const triggerLookup = (rIdx) => {
+            // 1. KILL EXISTING PROCESSES FOR THIS SPECIFIC ROW INDEX
+            if (debounceTimers[rIdx]) {
+              clearTimeout(debounceTimers[rIdx]);
+              delete debounceTimers[rIdx];
+            }
+
+            // If there's an ongoing Toast DIV for this row, remove it before starting new
+            if (activeRowToasts[rIdx]) {
+              const existingIdx = toasts.findIndex((t) => t.id === activeRowToasts[rIdx]);
+              if (existingIdx !== -1) toasts.splice(existingIdx, 1);
+              delete activeRowToasts[rIdx];
+            }
+
+            // 2. INITIATE DEBOUNCED SEARCH
+            debounceTimers[rIdx] = setTimeout(() => {
+              const val = String(grid[rIdx][CONTRACT_COL_INDEX]).trim();
+
+              if (!val || val.length < 3) return;
+              if (!selectedSourceId.value) {
+                showAppModal("Selection Required", "Please select a Source File first.", null, false, true);
+                return;
+              }
+
+              // 3. START SYSTEM MESSAGE (Linked to Row Index)
+              const tid = addToast(`Fetching Details: ${val}...`, 15000);
+              activeRowToasts[rIdx] = tid;
+
+              // 4. SERVER EXECUTION
+              google.script.run
+                .withSuccessHandler((res) => {
+                  // --- A. IMMEDIATE CLEANUP OF FETCHING TOAST ---
+                  const tIdx = toasts.findIndex((t) => t.id === tid);
+                  if (tIdx !== -1) toasts.splice(tIdx, 1);
+
+                  // ZOMBIE CHECK: Ensure row wasn't deleted while waiting for server
+                  const isStillActive = Object.values(activeRowToasts).includes(tid);
+                  delete debounceTimers[rIdx];
+                  delete activeRowToasts[rIdx];
+
+                  if (!isStillActive) return;
+                  if (!grid[rIdx] || String(grid[rIdx][CONTRACT_COL_INDEX]).trim() !== val) return;
+
+                  if (res && res.success) {
+                    res.data.forEach((v, i) => {
+                      if (i < 16) {
+                        // Protect Manual Remarks (Index 15)
+                        grid[rIdx][i] = v;
+                      }
+                    });
+
+                    // B. HANDLE SECURITY LOGIC (Master DB Bottom-Up)
+                    if (res.validation) {
+                      // BLOCK: Status is PAID
+                      if (res.validation.type === "BLOCK") {
+                        showAppModal(
+                          "Security Block",
+                          res.validation.message,
+                          () => {
+                            grid[rIdx][CONTRACT_COL_INDEX] = "";
+                            grid[rIdx][14] = "";
+                            persist();
+                          },
+                          false,
+                          true
+                        );
+                        return;
+                      }
+
+                      // WARNING: Status is RETURNED
+                      if (res.validation.type === "MODAL_WARN") {
+                        showAppModal("Endorsement Alert", res.validation.message);
+                      }
+
+                      // INFO: Verified in Master DB (Auto-expires in 5s)
+                      if (res.validation.type === "TOAST_INFO") {
+                        addToast(res.validation.message, 5000);
+                      }
+                    }
+
+                    // C. FORMATTING & UI REFRESH
+                    formatCurrencyCell(rIdx, 10);
+                    formatCurrencyCell(rIdx, 13);
+
+                    nextTick(() => {
+                      const rowTextareas = document.querySelectorAll(`tr:nth-child(${rIdx + 1}) textarea`);
+                      rowTextareas.forEach((t) => {
+                        t.style.height = "auto";
+                        t.style.height = t.scrollHeight + "px";
+                      });
+                    });
+
+                    persist();
+                  } else if (res && !res.success && res.error === "NOT_FOUND") {
+                    showAppModal("Not Found", res.message);
+                  }
+                })
+                .withFailureHandler(() => {
+                  // CLEANUP ON SERVER FAILURE
+                  const tIdx = toasts.findIndex((t) => t.id === tid);
+                  if (tIdx !== -1) toasts.splice(tIdx, 1);
+                  delete debounceTimers[rIdx];
+                  delete activeRowToasts[rIdx];
+                  showAppModal("Server Error", "Data lookup failed.");
+                })
+                .lookupContractData(val, selectedSourceId.value, selectedSourceTab.value);
+            }, 600);
+          };
+          const submitToDatabases = () => {
+            // 1. FILTER VALID ROWS
+            const allRowsWithData = grid.filter((r) => r[8] && String(r[8]).trim() !== "");
+
+            if (allRowsWithData.length === 0) {
+              showAppModal("Input Required", "Please ensure at least one row has an RFP NUMBER before submitting.");
+              return;
+            }
+
+            // 2. TARGETED GUARD: Check background sync
+            const rfpsInQueue = lookupQueue.value.map((item) => {
+              if (typeof item === "object" && item !== null) return String(item.rfp || item.contractNo || "").trim();
+              return String(item).trim();
+            });
+
+            const dataToSubmit = allRowsWithData.filter((row) => {
+              const rfp = String(row[8]).trim();
+              return !rfpsInQueue.includes(rfp);
+            });
+
+            if (dataToSubmit.length === 0) {
+              showAppModal(
+                "Sync in Progress",
+                "RFPs are still being fetched. Please wait for the 'Busy' status to disappear."
+              );
+              return;
+            }
+
+            // 3. START SUBMISSION
+            isSubmitting.value = true;
+
+            google.script.run
+              .withSuccessHandler((res) => {
+                isSubmitting.value = false;
+
+                // Collect everything handled by the server (Finished or Skip/Paid)
+                const finishedList = res.finishedRFPs || [];
+                const heldList = res.heldRFPs || [];
+                const handledByServer = [...finishedList, ...heldList];
+
+                // INCREMENTAL UI CLEANUP: Clear rows that the server already looked at
+                if (handledByServer.length > 0) {
+                  for (let i = 0; i < grid.length; i++) {
+                    const rfpInGrid = String(grid[i][8]).trim();
+                    if (handledByServer.includes(rfpInGrid)) {
+                      grid[i] = Array(headers.length).fill("");
+                      if (rowComments[rfpInGrid]) delete rowComments[rfpInGrid];
+                    }
+                  }
+                  persist(); // Save cleared state to LocalStorage
+                }
+
+                // 4. MODAL LOGIC (Handling success or prompts)
+                if (res.success) {
+                  const finishedCount = finishedList.length;
+                  const heldCount = heldList.length;
+
+                  let modalTitle = "Submission Complete";
+                  let modalMsg = "";
+
+                  if (finishedCount > 0 && heldCount === 0) {
+                    modalMsg = "All data has been successfully saved.";
+                  } else if (finishedCount === 0 && heldCount > 0) {
+                    modalTitle = "Action Blocked";
+                    modalMsg = `The following RFP(s) are already marked as PAID: \n\n${heldList.join(", ")}`;
+                  } else if (finishedCount > 0 && heldCount > 0) {
+                    modalTitle = "Partial Success";
+                    modalMsg = `Processed ${finishedCount} row(s) successfully.\n\nNOTE: [${heldList.join(", ")}] were skipped because they are already PAID.`;
+                  }
+
+                  showAppModal(modalTitle, modalMsg);
+                  confirmedRFPs.splice(0, confirmedRFPs.length);
+                } else if (res.actionRequired === "CANCELLED_NEW") {
+                  showAppModal("Previous Cancellation", res.message, () => {
+                    confirmedRFPs.push(res.contractNo);
+                    submitToDatabases();
+                  });
+                } else if (res.actionRequired === "NOTE") {
+                  showAppModal(
+                    "Action Note Required",
+                    res.message,
+                    (note) => {
+                      if (!note || note.trim().length < 3) return showAppModal("Error", "Valid note required.");
+                      rowComments[res.contractNo] = note;
+                      submitToDatabases();
+                    },
+                    true,
+                    true
+                  );
+                } else if (res.actionRequired === "OVERWRITE") {
+                  // Handle "Overwrite" message and inject notification about "PAID" rows if any were skipped
+                  let customMsg = res.message;
+                  if (heldList.length > 0) {
+                    customMsg = `(Note: RFPs [${heldList.join(", ")}] were skipped as PAID.)\n\n` + customMsg;
+                  }
+                  showAppModal("Confirm Overwrite", customMsg, () => {
+                    confirmedRFPs.push(res.contractNo);
+                    submitToDatabases();
+                  });
+                } else {
+                  showAppModal("Submission Error", res.message || "An unknown error occurred.");
+                }
+              })
+              .withFailureHandler((err) => {
+                isSubmitting.value = false;
+                showAppModal("System Error", "Connection to server failed. Try again.");
+              })
+              .submitData(
+                dataToSubmit,
+                rowComments,
+                Array.from(confirmedRFPs),
+                selectedSourceId.value || "",
+                selectedSourceTab.value || ""
+              );
+          };
+          // --- HELPER METHODS ---
+          const onCellValueChange = (r, c) => {
+            if (c === 10 || c === 13) {
+              let val = String(grid[r][c]);
+              const cleanVal = val.replace(/[^0-9.-]/g, "");
+              if (val !== cleanVal) grid[r][c] = cleanVal;
+            }
+            persist();
+            if (c === CONTRACT_COL_INDEX) triggerLookup(r);
+          };
+          const showAppModal = (title, message, onConfirm, showInput = false, hideCancel = false) => {
+            Object.assign(modal, {
+              show: true,
+              title,
+              message,
+              onConfirm,
+              showInput,
+              hideCancel,
+              inputValue: "",
+              confirmText: "OK",
+            });
+          };
+          const handleModalConfirm = () => {
+            if (modal.onConfirm) modal.onConfirm(modal.inputValue);
+            modal.show = false;
+          };
+          const addRow = () => {
+            grid.push(Array(headers.length).fill(""));
+            persist();
+          };
+          const confirmRemoveRow = (idx) => {
+            showAppModal("Delete Row", "Are you sure you want to remove this row?", () => {
+              // 1. INSTANTLY KILL PROCESSES & TOAST DIV FOR DELETED ROW
+              if (debounceTimers[idx]) {
+                clearTimeout(debounceTimers[idx]);
+                delete debounceTimers[idx];
+              }
+
+              if (activeRowToasts[idx]) {
+                const toastIdToKill = activeRowToasts[idx];
+                const toastArrIdx = toasts.findIndex((t) => t.id === toastIdToKill);
+
+                if (toastArrIdx !== -1) {
+                  // Triggers Vue to remove the Toast DIV from the screen immediately
+                  toasts.splice(toastArrIdx, 1);
+                }
+                delete activeRowToasts[idx];
+              }
+
+              // 2. RE-INDEX TRACKERS FOR SHIFTING ROWS
+              // We shift active timers/toasts UP if they are below the deleted row
+              const newActiveToasts = {};
+              const newTimers = {};
+
+              Object.keys(activeRowToasts).forEach((k) => {
+                const oldIdx = parseInt(k);
+                if (oldIdx > idx) {
+                  newActiveToasts[oldIdx - 1] = activeRowToasts[k];
+                } else if (oldIdx < idx) {
+                  newActiveToasts[oldIdx] = activeRowToasts[k];
+                }
+              });
+
+              Object.keys(debounceTimers).forEach((k) => {
+                const oldIdx = parseInt(k);
+                if (oldIdx > idx) {
+                  newTimers[oldIdx - 1] = debounceTimers[k];
+                } else if (oldIdx < idx) {
+                  newTimers[oldIdx] = debounceTimers[k];
+                }
+              });
+
+              // Apply shifted mappings back to the reactive state
+              Object.keys(activeRowToasts).forEach((k) => delete activeRowToasts[k]);
+              Object.keys(debounceTimers).forEach((k) => delete debounceTimers[k]);
+              Object.assign(activeRowToasts, newActiveToasts);
+              Object.assign(debounceTimers, newTimers);
+
+              // 3. REMOVE DATA FROM GRID AND PERSIST
+              grid.splice(idx, 1);
+              persist();
+            });
+          };
+
+          /* --- SOURCE PERSISTENCE WATCHER --- */
+          // Reacts instantly when the search box is modified or cleared
+          /* --- 2. SOURCE FILE WATCHER --- */
+          // Handles disconnection and auto-lookup when file name is deleted
+          watch(selectedSourceName, (newVal) => {
+            if (!newVal || newVal.trim() === "") {
+              selectedSourceId.value = "";
+              selectedSourceTab.value = "";
+              sourceHighlightIdx.value = -1;
+              lookupQueue.value = []; // Clear pending lookups if disconnected
+              persist();
+              return;
+            }
+
+            const exactMatch = sourceFileList.value.find((f) => f.name.toLowerCase() === newVal.trim().toLowerCase());
+
+            if (exactMatch) {
+              selectedSourceId.value = exactMatch.id;
+              selectedSourceTab.value = exactMatch.tab;
+            } else {
+              selectedSourceId.value = "";
+              selectedSourceTab.value = "";
+            }
+            persist();
+          });
+
+          // --- LIFECYCLE HOOKS ---
+          onMounted(() => {
+            try {
+              const test = JSON.parse(localStorage.getItem(STORAGE_KEY));
+            } catch (e) {
+              localStorage.removeItem(STORAGE_KEY);
+              console.warn("Corrupted storage cleared.");
+            }
+
+            window.addEventListener("copy", handleCopy);
+            window.addEventListener("paste", handlePaste);
+            window.addEventListener("keydown", handleKeyDown);
+            window.addEventListener("mousedown", handleClickOutside);
+            window.addEventListener("mouseup", () => (isDragging.value = false));
+
+            if (typeof google !== "undefined" && google.script) {
+              google.script.run
+                .withSuccessHandler((res) => {
+                  sourceFileList.value = res;
+                  if (selectedSourceName.value) onSourceChange();
+                })
+                .getSourceFiles();
+            }
+          });
+
+          onUnmounted(() => {
+            window.removeEventListener("copy", handleCopy);
+            window.removeEventListener("paste", handlePaste);
+            window.removeEventListener("keydown", handleKeyDown);
+            window.removeEventListener("mousedown", handleClickOutside);
+          });
+
+          return {
+            headers,
+            grid,
+            isDragging,
+            anchor,
+            current,
+            activeFocus,
+            isSelected,
+            handleMouseDown,
+            handleMouseEnter,
+            setActive,
+            onCellValueChange,
+            handleBlur,
+            modal,
+            handleModalConfirm,
+            toasts,
+            isSubmitting,
+            addRow,
+            confirmRemoveRow,
+            submitToDatabases,
+            sourceFileList,
+            selectedSourceName,
+            selectedSourceId,
+            selectedSourceTab,
+            onSourceChange,
+            persist,
+            handleResize,
+            handleCopy,
+            handlePaste,
+            showSourceDropdown,
+            sourceHighlightIdx,
+            filteredSources,
+            selectSource,
+            highlightNextSource,
+            highlightPrevSource,
+            selectHighlightedSource,
+            processNextInQueue,
+          };
+        },
+      }).mount("#app");
+    </script>
+  </body>
+</html>
