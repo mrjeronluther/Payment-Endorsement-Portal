@@ -1,425 +1,877 @@
 /**
- * ============================================================================
- * HIGH-PERFORMANCE GLOBAL CONFIGURATION
- * ============================================================================
+ * UI INITIALIZATION
  */
-const VAR = {
-     SOURCE_MAPPING_ID: "1O4kM0mBBMBjSzgwNJqb0eMiSUYshvPDYLrBPPWq42s8",
-     SOURCE_MAPPING_TAB: "SourceFile",
-
-     FILE_1_ID: "1cUtvzb_pDvtppKfU7SnAra6IOv2V1CqAsA6TBflmaVM", // Backup DB
-     FILE_1_TAB: "ActionLogs",
-     FILE_2_ID: "1eSWAWG6Rgc_etdLyEeb9u4yDMVGonp6RjWITTwj5ho8", // Master DB
-     FILE_2_TAB: "Sample",
-
-     COL_LIMIT: 16,
-     LOCK_TIMEOUT: 30000,
-     MAPPING: [
-          "YEAR",
-          "MONTH",
-          "PAYOR NAME",
-          "PAYEE NAME",
-          "PROPERTY",
-          "LOCATION",
-          "SECTOR",
-          "KINDS OF SERVICE",
-          "RFP NUMBER",
-          "CONTRACT NO",
-          "CONTRACT AMOUNT",
-          "INVOICE NO.",
-          "BILLING PERIOD",
-          "SOA AMOUNT",
-          "GENERAL STATUS",
-          "REMARKS",
-     ],
-     REVISED_COL_NAME: "Action Logs", // Column for history
-};
-
-const Security = {
-     sanitize(val) {
-          if (typeof val !== "string") return val;
-          const sanitized = val.trim();
-          return /^[=\+\-\@\t\r]/.test(sanitized) ? `'${sanitized}` : sanitized;
-     },
-};
-
-function doGet() {
-     return HtmlService.createTemplateFromFile("Index")
-          .evaluate()
-          .setTitle("PEP System")
-          .addMetaTag("viewport", "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0")
-          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
+function doGet(e) {
+  return HtmlService.createTemplateFromFile("Index")
+    .evaluate()
+    .setTitle("Payment Endorsement Platform")
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .addMetaTag("viewport", "width=device-width, initial-scale=1");
 }
 
-function getSourceFiles() {
-     try {
-          const ss = SpreadsheetApp.openById(VAR.SOURCE_MAPPING_ID);
-          const sheet = ss.getSheetByName(VAR.SOURCE_MAPPING_TAB);
-          if (!sheet) return [];
-          const data = sheet.getDataRange().getValues();
-          return data
-               .slice(1)
-               .filter((r) => r[0] && r[1])
-               .map((r) => ({
-                    name: String(r[0]).trim(),
-                    id: r[1].match(/[-\w]{25,}/) ? r[1].match(/[-\w]{25,}/)[0] : r[1],
-                    tab: String(r[2] || "").trim(),
-               }));
-     } catch (e) {
-          return [];
-     }
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
-// 1. CLEANS DATA COMING FROM CLIENT BEFORE SAVING TO SHEET
-// Converts "1,500.00" -> 1500 (Number) so formulas work
-function cleanForDB(val) {
-     if (typeof val !== "string") return val;
-     if (val.trim() === "") return "";
+const USER_DB_ID = "1dBO8ThI7FEKb24D9sPVWokfXLuWUx5aCQvisrT9wBvI";
+const USER_TAB = "PEP";
 
-     // Check if it looks like a number with commas (e.g. "1,234.56" or "-500")
-     // Regex: Optional minus, digits, optional commas, optional decimals
-     if (/^-?[\d,]+(\.\d+)?$/.test(val.trim())) {
-          const raw = val.replace(/,/g, ""); // Remove commas
-          if (!isNaN(raw) && isFinite(raw)) {
-               return Number(raw); // Return actual Number type
-          }
-     }
-     return val.trim(); // Return text otherwise
-}
-
-// 2. FORMATS DATA GOING TO CLIENT (LOOKUP)
-// Converts Date Objects -> "YYYY-MM-DD" string
-function formatForClient(val) {
-     if (val === null || val === undefined) return "";
-     if (val instanceof Date) {
-          return Utilities.formatDate(val, "GMT+8", "yyyy-MM-dd");
-     }
-     return String(val).trim();
-}
 /**
- * UTILITY: Normalizes any value into a clean, searchable String.
- * Prevents 12345 vs "12345" mismatch.
+ * ==========================================
+ * REGISTRATION SYSTEM (ZERO-TRUST)
+ * ==========================================
  */
-function normalize(val) {
-     if (val === null || val === undefined) return "";
-     return String(val).trim();
+
+function getActiveUserEmail() {
+  const activeEmail = Session.getActiveUser().getEmail();
+  const effectiveEmail = Session.getEffectiveUser().getEmail();
+
+  // LOGGING: Check your Apps Script Logs to see what is happening
+  console.log("Active User: " + activeEmail);
+  console.log("Effective User: " + effectiveEmail);
+
+  const finalEmail = activeEmail || effectiveEmail;
+
+  if (!finalEmail) {
+    throw new Error(
+      "Google Identity not found. Please ensure you are logged into your browser with your company email.",
+    );
+  }
+
+  return finalEmail;
 }
 
 /**
- * 1. IMPROVED LOOKUP: Optimized Sniper Mode
- * This avoids loading all rows. It only touches the specific row found.
+ * Stage 1: Security Check & OTP
+ * Logic: Checks if account already exists. Only sends code if new user.
  */
-/**
- * SNIPER LOOKUP: Fetches contract details (including Source Status)
- * and performs background Master DB security checks.
- */
-function lookupContractData(contractNo, sourceId, sourceTabString) {
-     try {
-          if (!sourceId || !sourceTabString) throw new Error("Selection Required.");
+function sendVerificationCode(email) {
+  const sessionEmail = Session.getActiveUser().getEmail();
+  if (!email || email !== sessionEmail)
+    throw new Error("Security Violation: Identity mismatch.");
 
-          const searchVal = String(contractNo).trim();
-          if (searchVal.length < 3) return { success: false };
+  const ss = SpreadsheetApp.openById(USER_DB_ID);
+  const sheet = ss.getSheetByName(USER_TAB);
+  const data = sheet.getDataRange().getValues();
 
-          // --- PART 1: SOURCE FILE LOOKUP (Contract Details) ---
-          const ssSource = SpreadsheetApp.openById(sourceId);
-          const tabNames = sourceTabString.split(",").map((name) => name.trim());
+  // Index 2 is USERNAME/EMAIL (Column C)
+  const alreadyExists = data.some((row) => row[2] === email);
+  if (alreadyExists)
+    throw new Error(
+      "This email is already registered. Please proceed to Login.",
+    );
 
-          let foundCell = null;
-          for (const tabName of tabNames) {
-               const sheet = ssSource.getSheetByName(tabName);
-               if (!sheet) continue;
-               const finder = sheet.createTextFinder(searchVal).matchEntireCell(true).findNext();
-               if (finder) {
-                    foundCell = finder;
-                    break;
-               }
-          }
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const cache = CacheService.getScriptCache();
+  cache.put(email, otp, 600); // 10 min expiry
 
-          if (!foundCell) {
-               return { success: false, error: "NOT_FOUND", message: `RFP '${searchVal}' not found in registry.` };
-          }
-
-          const sheetFound = foundCell.getSheet();
-          const rowIdx = foundCell.getRow();
-          const lastCol = sheetFound.getLastColumn();
-          const headers = sheetFound.getRange(1, 1, 1, lastCol).getValues()[0];
-          const rowValues = sheetFound.getRange(rowIdx, 1, 1, lastCol).getValues()[0];
-          const normalizedHeaders = headers.map((h) => String(h).trim().toUpperCase());
-
-          // Map indices 0 to 14 from the Source File (Includes Source General Status)
-          const mappedData = VAR.MAPPING.map((header) => {
-               const target = header.toUpperCase();
-               let idx = normalizedHeaders.indexOf(target);
-               if (idx === -1) idx = normalizedHeaders.findIndex((h) => target.includes(h) || h.includes(target));
-               return idx > -1 ? formatForClient(rowValues[idx]) : "";
-          });
-
-          // --- PART 2: BACKGROUND SECURITY CHECK (Master DB Bottom-Up) ---
-          let validation = { type: "VALID", message: "" };
-          const ssMaster = SpreadsheetApp.openById(VAR.FILE_2_ID);
-          const shMaster = ssMaster.getSheetByName(VAR.FILE_2_TAB);
-
-          // Find ALL instances of this RFP to check history
-          const results = shMaster.createTextFinder(searchVal).matchEntireCell(true).findAll();
-
-          if (results.length > 0) {
-               const latestMatch = results[results.length - 1];
-               const mRowIdx = latestMatch.getRow();
-               const mHeaders = shMaster
-                    .getRange(1, 1, 1, shMaster.getLastColumn())
-                    .getValues()[0]
-                    .map((h) => h.toString().toUpperCase());
-               const statusColIdx = mHeaders.indexOf("RBG STATUS (LATEST)");
-
-               if (statusColIdx !== -1) {
-                    const latestStatus = String(shMaster.getRange(mRowIdx, statusColIdx + 1).getValue())
-                         .trim()
-                         .toUpperCase();
-
-                    if (latestStatus === "PAID") {
-                         validation.type = "BLOCK";
-                         // MESSAGE REMOVED: No longer shows the status string
-                         validation.message = "SECURITY BLOCK: This RFP is locked for re-endorsement.";
-                    } else if (latestStatus.includes("RETURN")) {
-                         validation.type = "MODAL_WARN";
-                         // MESSAGE REMOVED: No longer shows the status string
-                         validation.message =
-                              "ATTENTION: This RFP was previously returned. Action Taken Note required on submission.";
-                    } else {
-                         validation.type = "TOAST_INFO";
-                         validation.message = "RFP record found!";
-                    }
-               }
-          }
-
-          return { success: true, data: mappedData, validation: validation };
-     } catch (e) {
-          return { success: false, error: "SYS_ERR", message: e.toString() };
-     }
+  try {
+    MailApp.sendEmail(
+      email,
+      "Account Verification Code",
+      "Your verification code is: " + otp,
+    );
+    return { success: true };
+  } catch (e) {
+    throw new Error("SMTP Error: Failed to deliver verification email.");
+  }
 }
 
 /**
- * STRICT NUMBER ENFORCER
- * Forces a value to be a Javascript Number.
- * "1,500.00" -> 1500
- * "PHP 500"  -> 500
- * "Free"     -> 0
+ * Stage 2: OTP Validation
  */
-function forceNumber(val) {
-     if (val === null || val === undefined) return 0;
+function verifyRegistrationCode(email, userCode) {
+  const sessionEmail = Session.getActiveUser().getEmail();
+  if (email !== sessionEmail)
+    throw new Error("Security Violation: Session hijacked.");
 
-     // Convert to string, strip everything except digits, dots, and minus
-     let cleanString = String(val).replace(/[^0-9.-]/g, "");
+  const cache = CacheService.getScriptCache();
+  const storedCode = cache.get(email);
 
-     // Parse
-     let number = parseFloat(cleanString);
+  if (!storedCode) throw new Error("Verification code expired.");
+  if (storedCode !== userCode) throw new Error("Incorrect verification code.");
 
-     // If result is NaN (Not a Number), default to 0.00
-     return isNaN(number) ? 0 : number;
+  return { success: true };
 }
 
 /**
- * Backend Submission Logic
+ * Stage 3: Write Record with Gap-Filling
+ * AUTOMATIC VALUES: USERNAME = Email, ACCESS LEVEL = REQUESTOR, STATUS = PENDING
  */
-function submitData(gridData, rowCommentsMap, confirmedOverwrites = [], sourceId, sourceTab) {
-     const lock = LockService.getScriptLock();
-     const finishedRFPs = [];
-     const heldRFPs = [];
 
-     try {
-          lock.waitLock(30000);
+function finalizeRegistration(formData) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
 
-          // Forces exact format and string type (Jan 29, 2026)
-          const ts = "'" + Utilities.formatDate(new Date(), "GMT+8", "MMM d, yyyy");
+    const activeUser = Session.getActiveUser().getEmail();
+    const ss = SpreadsheetApp.openById(USER_DB_ID);
+    let sheet = ss.getSheetByName(USER_TAB);
 
-          const validRows = gridData
-               .map((r, index) => ({ data: r, originalIndex: index }))
-               .filter((item) => String(item.data[8] || "").trim() !== "");
+    // Auto-setup if sheet missing (Headers A-H)
+    if (!sheet) {
+      sheet = ss.insertSheet(USER_TAB);
+      sheet.appendRow([
+        "TIMESTAMP",
+        "FULL NAME",
+        "USERNAME",
+        "PASSWORD",
+        "ACCESS LEVEL",
+        "ORGANIC OR NON ORGANIC",
+        "PERMISSION STATUS",
+        "EMPLOYEE STATUS", // Col H
+      ]);
+    }
 
-          if (validRows.length === 0) {
-               return { success: false, message: "No valid data found." };
-          }
+    const timestamp = new Date();
+    const username = activeUser;
+    const accessLevel = "REQUESTOR";
+    const permissionStatus = "PENDING";
+    const organicStatus = activeUser
+      .toLowerCase()
+      .includes("@megaworld-lifestyle.com")
+      ? "ORGANIC"
+      : "NON ORGANIC";
 
-          const ssMaster = SpreadsheetApp.openById(VAR.FILE_2_ID);
-          const shMaster = ssMaster.getSheetByName(VAR.FILE_2_TAB);
-          const ssLogs = SpreadsheetApp.openById(VAR.FILE_1_ID);
-          let shLogs = ssLogs.getSheetByName("ActionLogs");
+    // GAP FILLING: Find first empty Row (checks Col B - Full Name)
+    const nameCol = sheet.getRange("B:B").getValues();
+    let targetRow = -1;
+    for (let i = 1; i < nameCol.length; i++) {
+      if (nameCol[i][0] === "" || nameCol[i][0] === null) {
+        targetRow = i + 1;
+        break;
+      }
+    }
+    if (targetRow === -1) targetRow = sheet.getLastRow() + 1;
 
-          if (!shLogs) {
-               shLogs = ssLogs.insertSheet("ActionLogs");
-               const masterHeaders = shMaster.getRange(1, 1, 1, shMaster.getLastColumn()).getValues();
-               shLogs.getRange(1, 1, 1, masterHeaders[0].length).setValues(masterHeaders);
-          }
+    /**
+     * UPDATED LOGIC:
+     * We only prepare data for Columns A through G (7 columns).
+     * Column H (Index 8) is ignored entirely.
+     */
+    const rowPayload = [
+      timestamp, // A: TIMESTAMP
+      formData.fullName, // B: FULL NAME
+      username, // C: USERNAME
+      formData.password, // D: PASSWORD
+      accessLevel, // E: ACCESS LEVEL
+      organicStatus, // F: ORGANIC OR NON ORGANIC
+      permissionStatus, // G: PERMISSION STATUS
+    ];
 
-          const mHeaders = shMaster
-               .getRange(1, 1, 1, shMaster.getLastColumn())
-               .getValues()[0]
-               .map((h) => String(h).trim().toUpperCase());
-          const statusIdxM = mHeaders.indexOf("RBG STATUS (LATEST)");
-          const logIdxM = mHeaders.indexOf(VAR.REVISED_COL_NAME.toUpperCase());
-          const rbgCmtIdxM = mHeaders.indexOf("LATEST COMMENT OF RBG");
-          const dateStatIdxM = mHeaders.indexOf("DATE OF LATEST STATUS");
+    // Target columns 1 through 7 (A-G) only. Column 8 (H) is not touched.
+    sheet.getRange(targetRow, 1, 1, rowPayload.length).setValues([rowPayload]);
 
-          const sourceUrl = sourceId ? "https://docs.google.com/spreadsheets/d/" + sourceId : "N/A";
-          const sourceTabName = sourceTab || "N/A";
-
-          for (let i = 0; i < validRows.length; i++) {
-               const item = validRows[i];
-               const row = item.data;
-               const rfp = String(row[8]).trim();
-               const userNoteFromModal = rowCommentsMap[rfp];
-
-               let cleanData = row.map((cell, idx) => {
-                    if (idx === 10 || idx === 13) return forceNumber(cell);
-                    return cleanForDB(cell);
-               });
-
-               cleanData[16] = ts;
-               cleanData[17] = sourceUrl;
-               cleanData[18] = sourceTabName;
-
-               const allMatches = shMaster.createTextFinder(rfp).matchEntireCell(true).findAll();
-               let rowIdxInMaster = -1;
-               let existingRowData = [];
-               let currentStatus = "NEW";
-
-               if (allMatches.length > 0) {
-                    const latestMatchCell = allMatches[allMatches.length - 1];
-                    rowIdxInMaster = latestMatchCell.getRow();
-                    existingRowData = shMaster.getRange(rowIdxInMaster, 1, 1, mHeaders.length).getValues()[0];
-
-                    currentStatus = String(existingRowData[statusIdxM] || "").trim();
-                    const statusUpper = currentStatus.toUpperCase();
-
-                    if (statusUpper === "PAID") {
-                         heldRFPs.push(rfp);
-                         continue;
-                    }
-
-                    // Guard: Cancelled Logic
-                    if (statusUpper === "CANCELLED") {
-                         if (!confirmedOverwrites.includes(rfp)) {
-                              // Stop and ask user if they want to proceed as NEW
-                              return {
-                                   success: false,
-                                   actionRequired: "CANCELLED_NEW",
-                                   contractNo: rfp,
-                                   finishedRFPs,
-                                   heldRFPs,
-                                   message: `RFP ${rfp} was previously CANCELLED. Proceed as a NEW submission?`,
-                              };
-                         } else {
-                              // USER CONFIRMED: Reset index to -1 so it triggers "CASE: NEW SUBMISSION" below
-                              rowIdxInMaster = -1;
-                         }
-                    }
-
-                    if (statusUpper.includes("RETURN") && !userNoteFromModal) {
-                         return {
-                              success: false,
-                              actionRequired: "NOTE",
-                              contractNo: rfp,
-                              finishedRFPs,
-                              heldRFPs,
-                              message: `RFP ${rfp} is ${currentStatus}. Note required.`,
-                         };
-                    }
-
-                    if (
-                         ["WITH ACCTG", "PENDING ORIGINAL DOCS/ HARD COPY"].includes(statusUpper) &&
-                         !confirmedOverwrites.includes(rfp)
-                    ) {
-                         return {
-                              success: false,
-                              actionRequired: "OVERWRITE",
-                              contractNo: rfp,
-                              finishedRFPs,
-                              heldRFPs,
-                              message: `RFP ${rfp} is currently [${currentStatus}]. Overwrite?`,
-                         };
-                    }
-               }
-
-               // EXECUTE WRITE
-               if (rowIdxInMaster !== -1) {
-                    // Slice(0,17) saves column index 0 through 16 (The Timestamp)
-                    shMaster.getRange(rowIdxInMaster, 1, 1, 17).setValues([cleanData.slice(0, 17)]);
-
-                    if (logIdxM !== -1) {
-                         const prevLogs = String(existingRowData[logIdxM] || "");
-                         const statusBefore = String(existingRowData[statusIdxM] || "NEW").trim();
-
-                         const dateBeforeRaw = existingRowData[dateStatIdxM];
-                         const dateBeforeStr =
-                              dateBeforeRaw instanceof Date && !isNaN(dateBeforeRaw.getTime())
-                                   ? Utilities.formatDate(dateBeforeRaw, "GMT+8", "MMM d, yyyy")
-                                   : dateBeforeRaw
-                                     ? String(dateBeforeRaw)
-                                     : "";
-
-                         const rawCmt = existingRowData[rbgCmtIdxM];
-                         let commentBefore =
-                              rawCmt instanceof Date
-                                   ? Utilities.formatDate(rawCmt, "GMT+8", "MMM d, yyyy")
-                                   : String(rawCmt || "").trim();
-
-                         let logEntry = `${ts} | ${statusBefore}`;
-                         if (dateBeforeStr) logEntry += ` (${dateBeforeStr})`;
-                         if (commentBefore && commentBefore.toUpperCase() !== "N/A") logEntry += ` / ${commentBefore}`;
-                         logEntry += ` -> WITH ACCTG`;
-                         if (userNoteFromModal) logEntry += ` | Note: ${userNoteFromModal}`;
-
-                         shMaster
-                              .getRange(rowIdxInMaster, logIdxM + 1)
-                              .setValue(prevLogs ? logEntry + "\n" + prevLogs : logEntry);
-                    }
-                    if (statusIdxM !== -1) shMaster.getRange(rowIdxInMaster, statusIdxM + 1).setValue("WITH ACCTG");
-               } else {
-                    shMaster.appendRow(cleanData.slice(0, 19));
-                    const newIdx = shMaster.getLastRow();
-                    if (statusIdxM !== -1) shMaster.getRange(newIdx, statusIdxM + 1).setValue("WITH ACCTG");
-                    if (logIdxM !== -1) shMaster.getRange(newIdx, logIdxM + 1).setValue(`${ts} | Initial Submission`);
-               }
-
-               shLogs.appendRow(cleanData.slice(0, 19));
-               finishedRFPs.push(rfp);
-          }
-
-          // Cleanup Source Tab logic remains same
-          const ssSource = SpreadsheetApp.getActiveSpreadsheet();
-          const shSource = ssSource.getSheetByName(sourceTab);
-          if (shSource && shSource.getLastRow() > 1) {
-               shSource.getRange(2, 1, shSource.getLastRow() - 1, shSource.getLastColumn()).clearContent();
-          }
-
-          return { success: true, finishedRFPs, heldRFPs, message: "Submission Successful." };
-     } catch (e) {
-          console.error(e);
-          return { success: false, message: e.toString(), finishedRFPs, heldRFPs };
-     } finally {
-          lock.releaseLock();
-     }
+    return { success: true, message: "Registered under " + activeUser };
+  } catch (e) {
+    throw new Error("Persistence Error: " + e.message);
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /**
- * Helper to ensure numeric columns don't break
+ * AUTHENTICATION (Login Logic)
+ * Enforcement: Employee must be ACTIVE & Permission must be ACTIVE
+ * FIX: Uses getDisplayValues and Flush to handle numeric passwords like '123'
  */
-function forceNumber(val) {
-     if (val === "" || val === null || val === undefined) return "";
-     const num = Number(val.toString().replace(/[^0-9.-]+/g, ""));
-     return isNaN(num) ? val : num;
+function authenticateUser(credentials) {
+  // 1. Force Google to commit all pending changes before reading
+  SpreadsheetApp.flush();
+
+  const ss = SpreadsheetApp.openById(USER_DB_ID);
+  const sheet = ss.getSheetByName(USER_TAB);
+
+  // 2. Use getDisplayValues() to ensure "123" is read as a string "123"
+  const data = sheet.getDataRange().getDisplayValues();
+  data.shift(); // Remove headers
+
+  // 3. Normalize inputs for comparison
+  const inputEmail = String(credentials.email || "")
+    .trim()
+    .toLowerCase();
+  const inputPass = String(credentials.password || "").trim();
+
+  const userRow = data.find((row) => {
+    const storedEmail = String(row[2] || "")
+      .trim()
+      .toLowerCase();
+    const storedPass = String(row[3] || "").trim();
+    return storedEmail === inputEmail && storedPass === inputPass;
+  });
+
+  if (!userRow) throw new Error("Invalid credentials.");
+
+  // Validation 1: EMPLOYEE STATUS (Col H / Index 7)
+  const employeeStatus = String(userRow[7] || "")
+    .trim()
+    .toUpperCase();
+  if (employeeStatus !== "ACTIVE") {
+    throw new Error(
+      "Access Denied: Your employee status is " + employeeStatus + ".",
+    );
+  }
+
+  // Validation 2: PERMISSION STATUS (Col G / Index 6)
+  const permission = String(userRow[6] || "")
+    .trim()
+    .toUpperCase();
+  if (permission === "PENDING") {
+    throw new Error("Account Pending: Awaiting admin activation.");
+  }
+  if (permission !== "APPROVED") {
+    throw new Error("Access Denied: Account status is " + permission + ".");
+  }
+
+  return {
+    success: true,
+    user: {
+      fullName: userRow[1],
+      email: userRow[2],
+      role: userRow[4],
+      classification: userRow[5],
+    },
+  };
 }
 
 /**
- * Helper to clean strings for DB entry
+ * ==========================================
+ * RFP TRANSACTION & GENERATION (Spreadsheet)
+ * ==========================================
  */
-function cleanForDB(val) {
-     if (val === null || val === undefined) return "";
-     if (val instanceof Date) return Utilities.formatDate(val, "GMT+8", "MMM d, yyyy");
-     return String(val).trim();
+var REGISTRY_SS_ID = "1YAvZmCdWXbjOcJA-uUY40e6qVqzyiHcB06NpiPcz6y4";
+var TAB_NAME = "autogenrfp";
+
+function generateRfpNumber() {
+  var lock = LockService.getPublicLock();
+  try {
+    // 1. Critical Section: Prevent concurrent executions
+    lock.waitLock(30000);
+
+    var ss = SpreadsheetApp.openById(REGISTRY_SS_ID);
+    var sheet = ss.getSheetByName(TAB_NAME);
+
+    if (!sheet) {
+      sheet = ss.insertSheet(TAB_NAME);
+      sheet.appendRow(["RFP Number", "Timestamp"]);
+    }
+
+    var lastRow = sheet.getLastRow();
+    var nextSuffix = 1;
+
+    // 2. Determine Next Suffix (Continuous Sequence)
+    if (lastRow > 1) {
+      var lastRfpValue = sheet.getRange(lastRow, 1).getValue().toString();
+
+      // Use regex to find the last group of digits at the end of the string
+      // This ensures we get the counter even if the YYYY-MM prefix changes
+      var match = lastRfpValue.match(/(\d+)$/);
+      if (match) {
+        nextSuffix = parseInt(match[1], 10) + 1;
+      }
+    }
+
+    // 3. Get Current Date in Philippine Time (GMT+8)
+    var now = new Date();
+    var yearMonth = Utilities.formatDate(now, "GMT+8", "yyyy-MM");
+
+    // Generate RFP ID: MALL-YYYY-MM-000000X
+    var newRfp = "MALL-" + yearMonth + "-" + ("0000000" + nextSuffix).slice(-7);
+
+    // 4. Deduplication Check: Search Column A for the new ID
+    var range = sheet.getRange("A:A");
+    var duplicate = range
+      .createTextFinder(newRfp)
+      .matchEntireCell(true)
+      .findNext();
+
+    if (duplicate) {
+      console.warn(
+        "Duplicate detected for " + newRfp + ". Incrementing sequence...",
+      );
+      // Increment suffix and try again to avoid recursion depth issues
+      nextSuffix++;
+      newRfp = "MALL-" + yearMonth + "-" + ("0000000" + nextSuffix).slice(-7);
+    }
+
+    // 5. Persistence
+    sheet.appendRow([newRfp, now]);
+
+    // 6. Force write to DB before releasing lock
+    SpreadsheetApp.flush();
+
+    return newRfp;
+  } catch (e) {
+    console.error("Error generating RFP: " + e.toString());
+    throw new Error("Failed to generate RFP Number: " + e.message);
+  } finally {
+    if (lock.hasLock()) {
+      lock.releaseLock();
+    }
+  }
 }
 
-function formatForClient(val) {
-     if (val instanceof Date) return Utilities.formatDate(val, "GMT+8", "yyyy-MM-dd");
-     return val === null || val === undefined ? "" : String(val).trim();
+/**
+ * Fetches RFP data based on an RFP number, with a block on records 
+ * marked with "GENERAL STATUS" as "PAID".
+ */
+function getRfpData(rfpNumber, offset = 0) {
+  // Call the high-performance search function
+  const result = performCrossFileSearch(rfpNumber, offset);
+
+  // CASE 1: A matching record was found
+  if (result.records && result.records.length > 0) {
+    const raw = result.records[0];
+
+    // --- SECURITY/STATUS CHECK: BLOCK IF PAID ---
+    // Note: 'raw' uses the keys directly from your sheet headers
+    const currentStatus = String(raw["GENERAL STATUS"] || "").trim().toUpperCase();
+
+    if (currentStatus === "PAID") {
+      return {
+        status: "ALREADY_PAID",
+        message: "This RFP (" + rfpNumber + ") is already marked as PAID and cannot be retrieved for a new submission."
+      };
+    }
+    // --------------------------------------------
+
+    // List of specific fields required for your UI form
+    const tableFields = [
+      "YEAR",
+      "MONTH",
+      "PAYOR NAME",
+      "PAYEE NAME",
+      "PROPERTY",
+      "LOCATION",
+      "SECTOR",
+      "KINDS OF SERVICE",
+      "CONTRACT NO",
+      "CONTRACT AMOUNT",
+      "INVOICE NO.",
+      "BILLING PERIOD",
+      "SOA AMOUNT",
+      "GENERAL STATUS",
+    ];
+
+    // Format the particulars object based on the matched record
+    const formattedParticulars = {};
+    tableFields.forEach((f) => {
+      // If the field exists in the record, use it; otherwise, return empty string
+      formattedParticulars[f] = (raw[f] !== undefined && raw[f] !== null) ? raw[f] : "";
+    });
+
+    return {
+      status: "FOUND",
+      // Handles both header naming conventions "DUE DATE" or "DATE DUE"
+      dueDate: raw["DUE DATE"] || raw["DATE DUE"] || "",
+      particulars: formattedParticulars,
+    };
+  }
+
+  // CASE 2: The script reached the time limit (210s) and needs to run again
+  if (result.nextOffset !== null) {
+    return {
+      status: "CONTINUE",
+      nextOffset: result.nextOffset,
+    };
+  }
+
+  // CASE 3: Entire index was searched and no record was found
+  return { status: "NOT_FOUND" };
+}
+
+/**
+ * Optimized Cross-File Search
+ * Searches for rfpNumber across multiple spreadsheets listed in a Master file.
+ */
+function performCrossFileSearch(rfpNumber, offset = 0) {
+  const START_TIME = Date.now();
+  const TIME_LIMIT = 210000; // 3.5 minutes (Safe buffer)
+  const cleanInput = rfpNumber.toString().trim().toUpperCase();
+
+  const MASTER_ID = "10p-nv_qAN0GzZHAVInyb9_bprk2_sLf08190qdMf8Mc";
+
+  // 1. Get the list of files to search
+  const indexSheet = SpreadsheetApp.openById(MASTER_ID).getSheetByName("SOURCEFILES");
+  const indexData = indexSheet.getDataRange().getValues();
+  const indexHeaders = indexData.shift().map(h => h.toString().trim().toUpperCase());
+
+  const urlColIdx = indexHeaders.indexOf("FILE URL");
+  const tabColIdx = indexHeaders.indexOf("TAB NAME");
+
+  let allMatchedRecords = [];
+
+  for (let i = offset; i < indexData.length; i++) {
+    // Check execution time remaining
+    if (Date.now() - START_TIME > TIME_LIMIT) {
+      return { records: allMatchedRecords, nextOffset: i };
+    }
+
+    let row = indexData[i];
+    let targetUrl = row[urlColIdx];
+    let rawTabNames = row[tabColIdx] ? row[tabColIdx].toString() : "";
+
+    if (!targetUrl || targetUrl.trim() === "") continue;
+
+    try {
+      let targetSs = SpreadsheetApp.openByUrl(targetUrl);
+      let tz = targetSs.getSpreadsheetTimeZone(); // Dynamic timezone
+      let tabNamesArray = rawTabNames.split(",").map(n => n.trim()).filter(n => n !== "");
+
+      for (let tabName of tabNamesArray) {
+        let targetSheet = targetSs.getSheetByName(tabName);
+        if (!targetSheet) continue;
+
+        let lastRow = targetSheet.getLastRow();
+        let lastCol = targetSheet.getLastColumn();
+        if (lastRow < 6) continue;
+
+        // FETCH ENTIRE DATA RANGE FOR THIS SHEET ONCE (Minimize API Calls)
+        // Optimization: Instead of row-by-row range calls, get everything starting row 5
+        let sheetData = targetSheet.getRange(5, 1, lastRow - 4, lastCol).getValues();
+
+        let fileHeaders = sheetData[0].map(h => h.toString().trim().toUpperCase());
+        let rfpColIdx = fileHeaders.indexOf("RFP|PEF NO.");
+        if (rfpColIdx === -1) continue;
+
+        // Search the data (skipping the header row 0 of sheetData)
+        for (let r = 1; r < sheetData.length; r++) {
+          let cellValue = sheetData[r][rfpColIdx];
+
+          if (cellValue && cellValue.toString().trim().toUpperCase() === cleanInput) {
+            let record = {};
+            let matchRow = sheetData[r];
+
+            fileHeaders.forEach((h, idx) => {
+              let val = matchRow[idx];
+              // Safe check for blank headers
+              let key = h || "COLUMN_" + idx;
+
+              record[key] = (val instanceof Date)
+                ? Utilities.formatDate(val, tz, "yyyy-MM-dd")
+                : val;
+            });
+
+            allMatchedRecords.push(record);
+
+            // If you only want the FIRST found match globally:
+            // return { records: allMatchedRecords, nextOffset: null };
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Skipping " + targetUrl + " due to error: " + e.message);
+    }
+  }
+
+  return { records: allMatchedRecords, nextOffset: null };
+}
+/**
+ * FORGOT PASSWORD - STAGE 1: Check account and send OTP
+ * Triggered by: google.script.run.requestPasswordResetCode(email)
+ */
+function requestPasswordResetCode(email) {
+  const sessionEmail = Session.getActiveUser().getEmail();
+  if (!email || email !== sessionEmail)
+    throw new Error(
+      "Security Violation: You can only reset the password for your own authenticated account.",
+    );
+
+  const ss = SpreadsheetApp.openById(USER_DB_ID);
+  const sheet = ss.getSheetByName(USER_TAB);
+  const data = sheet.getDataRange().getValues();
+
+  // Find index 2 (Column C - USERNAME/EMAIL)
+  const accountExists = data.some((row) => row[2] === email);
+  if (!accountExists)
+    throw new Error("No registered account found for this email address.");
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const cache = CacheService.getScriptCache();
+  cache.put("RESET_" + email, otp, 600); // Unique cache key for resets
+
+  try {
+    MailApp.sendEmail(
+      email,
+      "Password Reset Code",
+      "Your password reset verification code is: " + otp,
+    );
+    return { success: true, message: "Verification code sent." };
+  } catch (e) {
+    throw new Error("SMTP Error: Failed to send reset code.");
+  }
+}
+
+/**
+ * FORGOT PASSWORD - STAGE 2: Validate Reset OTP
+ * Triggered by: google.script.run.verifyResetCode(email, otp)
+ */
+function verifyResetCode(email, userCode) {
+  const cache = CacheService.getScriptCache();
+  const storedCode = cache.get("RESET_" + email);
+
+  if (!storedCode)
+    throw new Error("Reset code expired. Please request a new one.");
+  if (storedCode !== userCode) throw new Error("The reset code is incorrect.");
+
+  return { success: true, message: "Identity verified for reset." };
+}
+
+/**
+ * FORGOT PASSWORD - STAGE 3: Overwrite Old Password
+ * Includes fix for numeric passwords and data latency.
+ */
+function submitPasswordReset(email, newPassword) {
+  const lock = LockService.getScriptLock();
+  try {
+    // Wait up to 30 seconds for other processes to finish
+    lock.waitLock(30000);
+
+    const ss = SpreadsheetApp.openById(USER_DB_ID);
+    const sheet = ss.getSheetByName(USER_TAB);
+
+    // getDisplayValues() is critical: it reads "123" as a string, not a number
+    const data = sheet.getDataRange().getDisplayValues();
+
+    let rowIndex = -1;
+    let currentStoredPassword = "";
+
+    // Normalize email for comparison
+    const cleanEmail = email.toString().trim().toLowerCase();
+
+    for (let i = 0; i < data.length; i++) {
+      if (data[i][2].toString().trim().toLowerCase() === cleanEmail) {
+        rowIndex = i + 1;
+        currentStoredPassword = data[i][3]; // Column D
+        break;
+      }
+    }
+
+    if (rowIndex === -1) throw new Error("Account record not found.");
+
+    // Security: Block reusing the same password
+    if (newPassword.toString() === currentStoredPassword) {
+      throw new Error(
+        "The new password must be different from your current password.",
+      );
+    }
+
+    /**
+     * Update Column D
+     * We convert to string explicitly to prevent Google Sheets from
+     * treating "123" as a math-ready number.
+     */
+    sheet.getRange(rowIndex, 4).setValue(newPassword.toString());
+
+    // CRITICAL: Forces Google to commit the save before the script finishes
+    SpreadsheetApp.flush();
+
+    return {
+      success: true,
+      message: "Password updated successfully. You may now log in.",
+    };
+  } catch (e) {
+    throw new Error(e.message);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * High-Performance Submission Logic
+ * Optimized for datasets exceeding 1 million rows/cells.
+ */
+function processSubmission(p) {
+  const lock = LockService.getPublicLock();
+  const FOLDER_ID = "1eFcLGXPEnUSi14aPvvA9m2ATV8Racsuf";
+  const SS_ID = "1YAvZmCdWXbjOcJA-uUY40e6qVqzyiHcB06NpiPcz6y4";
+
+  try {
+    // 1. CONCURRENCY LOCK (30s timeout)
+    if (!lock.tryLock(30000)) {
+      throw new Error(
+        "Server is congested. Please wait 30 seconds and try again.",
+      );
+    }
+
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const sh = ss.getSheetByName("SUBMISSIONS");
+
+    // 2. SCALABILITY & CAPACITY GUARD
+    const MAX_CELLS_LIMIT = 9500000;
+    const currentMaxRows = sh.getMaxRows();
+    const currentMaxCols = sh.getMaxColumns();
+    const currentTotalCells = currentMaxRows * currentMaxCols;
+
+    if (currentTotalCells >= MAX_CELLS_LIMIT) {
+      throw new Error(
+        "Storage Limit Alert: 9.5M cell capacity reached. Please archive data before next submission.",
+      );
+    }
+
+    // 3. VALIDATIONS (Backend Safety)
+    if (!p.header.rfpNo || !p.header.dueDate)
+      throw new Error("RFP Number and Due Date are required.");
+    if (!p.participants || p.participants.length === 0)
+      throw new Error("At least one Transaction Participant is required.");
+    if (!p.participants.some((item) => item.tag === "Primary"))
+      throw new Error("At least one 'Primary' participant is required.");
+
+    // 4. HIGH-SPEED DUPLICATE CHECK
+    // TextFinder is significantly faster than loading the column into an array for large sheets
+    const duplicate = sh
+      .getRange("F:F")
+      .createTextFinder(p.header.rfpNo)
+      .matchEntireCell(true)
+      .findNext();
+    if (duplicate)
+      throw new Error("Duplicate RFP: " + p.header.rfpNo + " already exists.");
+
+    // 5. ASSET GENERATION
+    const folder = DriveApp.getFolderById(FOLDER_ID);
+    const blob = Utilities.newBlob(
+      Utilities.base64Decode(p.attachment.base64),
+      "application/pdf",
+      p.header.rfpNo + "_Support.pdf",
+    );
+    const attachmentUrl = folder.createFile(blob).getUrl();
+    const formPdfUrl = createRfpPdf(p, folder);
+
+    // 6. DATA PREPARATION
+    const txnId = "TXN-" + Utilities.getUuid().split("-")[0].toUpperCase();
+    const primaryEmails = p.participants
+      .filter((i) => i.tag === "Primary")
+      .map((i) => i.email)
+      .join(", ");
+    const secondaryEmails = p.participants
+      .filter((i) => i.tag === "Secondary")
+      .map((i) => i.email)
+      .join(", ");
+
+    const rowPrefix = [
+      txnId,
+      new Date(),
+      Session.getActiveUser().getEmail(),
+      primaryEmails,
+      secondaryEmails,
+      p.header.rfpNo,
+      p.header.dueDate,
+    ];
+
+    const rowData = p.tableFields.map((f) => {
+      const val = p.particulars[f];
+      // Strict numeric parsing for Amount fields to ensure spreadsheet math works at scale
+      return f.includes("AMOUNT")
+        ? parseFloat(String(val).replace(/,/g, ""))
+        : val;
+    });
+
+    // Construct the final flattened array for the row
+    const finalRowData = [
+      rowPrefix.concat(rowData).concat([attachmentUrl, formPdfUrl]),
+    ];
+
+    // 7. OPTIMIZED DIRECT-WRITE (Handling Millions of Rows)
+    const lastRow = sh.getLastRow();
+
+    // Auto-expand sheet if we are at the very bottom to prevent insertion errors
+    if (lastRow === currentMaxRows) {
+      sh.insertRowsAfter(currentMaxRows, 100); // Pre-emptively add 100 rows
+    }
+
+    // Write directly to the range (Faster than appendRow for massive sheets)
+    const targetRange = sh.getRange(lastRow + 1, 1, 1, finalRowData[0].length);
+    targetRange.setValues(finalRowData);
+
+    // 8. FINAL COMMIT
+    SpreadsheetApp.flush();
+
+    return { success: true, message: p.header.rfpNo };
+  } catch (e) {
+    console.error("Critical Submission Error: " + e.message);
+    return { success: false, message: e.message };
+  } finally {
+    if (lock.hasLock()) lock.releaseLock();
+  }
+}
+/**
+ * Generates a PDF.
+ */
+function createRfpPdf(p, folder) {
+  const LOGO_FILE_ID = "1QZ3XkRk1x-p_GFSjKhQO8i4dmIVzE1dG";
+
+  const getLogoDataUri = (fileId) => {
+    try {
+      const file = DriveApp.getFileById(fileId);
+      return "data:" + file.getMimeType() + ";base64," + Utilities.base64Encode(file.getBlob().getBytes());
+    } catch (e) {
+      return "";
+    }
+  };
+
+  const logoBase64 = getLogoDataUri(LOGO_FILE_ID);
+
+  // --- REFACTOR 1: PARTICULARS LOOP ---
+  let tableRowsHtml = "";
+  for (let i = 0; i < p.tableFields.length; i += 3) {
+    tableRowsHtml += "<tr>";
+    for (let j = 0; j < 3; j++) {
+      const field = p.tableFields[i + j];
+      tableRowsHtml += field
+        ? `<td class="grid-cell" style="width: 33.33%;">
+             <div class="field-label">${field.replace(/_/g, " ")}</div>
+             <div class="field-value">${p.particulars[field] || "—"}</div>
+           </td>`
+        : `<td class="grid-cell" style="width: 33.33%;"></td>`;
+    }
+    tableRowsHtml += "</tr>";
+  }
+
+  // --- REFACTOR 2: GENERATE 5 LINES ---
+  let noteLinesHtml = "";
+  for (let n = 0; n < 5; n++) {
+    noteLinesHtml += '<div class="note-line"></div>';
+  }
+
+  const html = `
+  <html>
+  <head>
+    <style>
+      @page { size: letter portrait; margin: 0.35in; }
+      body { font-family: 'Arial', sans-serif; font-size: 10pt; color: #000; line-height: 1.2; margin: 0; }
+
+      .brand-wrapper { text-align: center; margin-bottom: 8px; width: 100%; }
+      .logo-img { width: 170px; height: auto; }
+      .doc-title { 
+        text-align: center; font-size: 17pt; font-weight: bold; 
+        text-transform: uppercase; border-bottom: 3px solid #000;
+        padding-bottom: 8px; margin-top: 2px; margin-bottom: 15px;
+      }
+      .meta-table { width: 100%; margin-bottom: 15px; border-collapse: collapse; }
+      .meta-label { font-size: 7.5pt; color: #555; text-transform: uppercase; font-weight: bold; }
+      .meta-value { font-size: 11pt; font-weight: bold; border-bottom: 1px solid #ccc; padding: 2px 0; }
+      .particulars-grid { 
+        width: 100%; 
+        border-collapse: collapse; 
+        table-layout: fixed; /* ESSENTIAL: Keeps columns at exactly 33.3% */
+        border: 1.5px solid #000;
+      }
+       .grid-cell { 
+        border: 1px solid #000; 
+        padding: 6px 8px; 
+        vertical-align: top; 
+        
+        /* THE OVERLAP FIX: */
+        word-wrap: break-word;       /* Standard */
+        overflow-wrap: break-word;  /* Modern fallback */
+        word-break: break-word;     /* Support for long continuous strings */
+        white-space: normal;        /* Allows the line to break */
+        overflow: hidden;           /* Safety: clipped if it tries to invade neighbor */
+        
+        /* Allow height to grow based on content */
+        height: auto; 
+        min-height: 42px;           /* Minimum visual height for short data */
+      }
+
+      .field-label { 
+        font-size: 7pt; 
+        color: #333; 
+        text-transform: uppercase; 
+        font-weight: bold; 
+        margin-bottom: 3px; 
+      }
+      .field-value { 
+        font-size: 9.5pt;           /* Slightly larger for clarity */
+        font-weight: bold; 
+        display: block;             /* Ensure it fills the cell container */
+        color: #000;
+      }
+      
+      .notes-title { font-size: 9pt; font-weight: bold; text-transform: uppercase; margin-top: 15px; margin-bottom: 5px; }
+      /* Spacing fix for 5 lines */
+      .note-line { width: 100%; height: 23px; border-bottom: 1px solid #000; }
+
+      .sig-table { margin-top: 35px; width: 100%; border-collapse: collapse; }
+      .sig-line { 
+        border-top: 1.5px solid #000; width: 85%; margin: 35px auto 0 auto; 
+        padding-top: 6px; font-size: 8pt; font-weight: bold; text-align: center; text-transform: uppercase;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="brand-wrapper">${logoBase64 ? `<img src="${logoBase64}" class="logo-img">` : ""}</div>
+    <div class="doc-title">Request for Payment</div>
+
+    <table class="meta-table">
+      <tr>
+        <td style="width: 45%;">
+          <div class="meta-label">RFP Number</div>
+          <div class="meta-value" style="font-size: 14pt;">${p.header.rfpNo}</div>
+        </td>
+        <td style="width: 27.5%; vertical-align: bottom;">
+          <div class="meta-label">Date Requested</div>
+          <div class="meta-value">${p.header.date}</div>
+        </td>
+        <td style="width: 27.5%; vertical-align: bottom;">
+          <div class="meta-label">Due Date</div>
+          <div class="meta-value">${p.header.dueDate}</div>
+        </td>
+      </tr>
+    </table>
+
+    <table class="particulars-grid">
+      ${tableRowsHtml}
+    </table>
+
+    <div class="notes-title">NOTES / REMARKS:</div>
+    ${noteLinesHtml}
+
+    <table class="sig-table">
+      <tr>
+        <td><div class="sig-line">Requested By</div></td>
+        <td><div class="sig-line">Verified By</div></td>
+        <td><div class="sig-line">Approved By</div></td>
+      </tr>
+    </table>
+  </body>
+  </html>`;
+
+  const pdfBlob = Utilities.newBlob(html, "text/html").getAs("application/pdf").setName(`RFP_${p.header.rfpNo}.pdf`);
+  return folder.createFile(pdfBlob).getUrl();
+}
+/**
+ * Retrieves a unique list of emails used in previous transactions for suggestions.
+ */
+function getPreviousParticipantEmails() {
+  const SS_ID = "1YAvZmCdWXbjOcJA-uUY40e6qVqzyiHcB06NpiPcz6y4";
+  const sh = SpreadsheetApp.openById(SS_ID).getSheetByName("SUBMISSIONS");
+  const lastRow = sh.getLastRow();
+
+  if (lastRow < 2) return [];
+
+  // We are grabbing Columns D (Primary) and E (Secondary)
+  // Which are index 4 and 5 in the row
+  const data = sh.getRange(2, 4, lastRow - 1, 2).getValues();
+
+  let emailSet = new Set();
+
+  data.forEach(row => {
+    // Column D (Primary Emails string)
+    if (row[0]) {
+      row[0].split(",").forEach(e => {
+        let clean = e.trim().toLowerCase();
+        if (clean.includes("@")) emailSet.add(clean);
+      });
+    }
+    // Column E (Secondary Emails string)
+    if (row[1]) {
+      row[1].split(",").forEach(e => {
+        let clean = e.trim().toLowerCase();
+        if (clean.includes("@")) emailSet.add(clean);
+      });
+    }
+  });
+
+  // Convert Set back to an Array and return
+  return Array.from(emailSet).sort();
 }
