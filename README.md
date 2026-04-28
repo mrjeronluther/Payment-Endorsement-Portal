@@ -1,73 +1,99 @@
-# Payment Endorsement Portal
+# Payment Endorsement Platform (PEP)
 
 ## Introduction
-Payment Endorsement Portal is a Google Apps Script web app that lets PCU Group encode and endorse specific RFP numbers to RBG. It provides a simple HTML/JavaScript front-end with Apps Script server-side handlers to record and confirm endorsements. Intended for internal PCU/MCD use by staff responsible for RFP endorsements.
+The **Payment Endorsement Platform (PEP)** is a secure, enterprise-grade financial workflow tool built within the Google Workspace ecosystem. It streamlines the creation, verification, and endorsement of **Requests for Payment (RFP)** and **Payment Endorsement Forms (PEF)**.
+
+The system ensures financial integrity by cross-referencing requests against master source files, generating unique RFP tracking numbers, and producing tamper-proof PDF documents for audit trails.
+
+### Core Features:
+*   **Zero-Trust Registration:** Identity verification via Google Session and OTP (One-Time Password) email validation.
+*   **Strict Search Engine:** Advanced lookup logic that validates RFP/Invoice data against specific source spreadsheets before allowing submission.
+*   **Dynamic RFP Generation:** Automated sequence logic to generate unique, formatted tracking IDs (e.g., `MALL-YYYY-MM-000000X`).
+*   **Automated PDF Engine:** Converts web forms into standardized, print-ready PDF layouts with brand headers and signature lines.
+*   **Intelligent Participant Routing:** Suggests previous participants and routes notifications to Primary and Secondary recipients.
+
+---
 
 ## Installation Instructions
 
-Prerequisites:
-- A Google account with access to Google Apps Script.
-- Optional: Node.js + clasp if you prefer local development.
+### 1. Spreadsheet Database Setup
+You require three specific Google Sheets to act as the backend:
+*   **User Database (`USER_DB_ID`):** A sheet named `PEP` to store user profiles, passwords, and access levels.
+*   **RFP Registry (`REGISTRY_SS_ID`):** A sheet named `autogenrfp` to manage the ID sequence and a `SUBMISSIONS` sheet for transaction logs.
+*   **Master Index (`MASTER_ID`):** A sheet named `SOURCEFILES` containing `File Name`, `File URL`, and `Tab Name` for the search engine to query.
 
-Manual (Apps Script UI):
-1. Open https://script.google.com/ and create a new project.
-2. Copy the repository files (HTML + JavaScript/Code.gs) into the Apps Script project files.
-3. In the Apps Script editor, set `doGet`/`doPost` handlers (if not already present).
-4. Deploy → New deployment → Select "Web app".
-   - Execute as: Me (or appropriate service account)
-   - Who has access: Only myself / Anyone in <your-domain> as required
-5. Copy the Web app URL and share with authorized users.
+### 2. Google Drive Configuration
+*   Create a dedicated folder in Google Drive to store submitted PDFs and attachments.
+*   Copy the **Folder ID** from the URL.
 
-Using clasp (optional):
-1. Install clasp: `npm install -g @google/clasp`
-2. Authenticate: `clasp login`
-3. Clone this repo locally and create a new Apps Script project:
-   - `clasp create --title "Payment Endorsement Portal" --type webapp`
-4. Push files: `clasp push`
-5. Deploy from the Apps Script UI or with `clasp deploy`.
+### 3. Script Deployment
+1.  Open [Google Apps Script](https://script.google.com).
+2.  Create a **New Project**.
+3.  Copy the `Index.html` and `Code.js` content into the editor.
+4.  **Update Global Constants:** In `Code.js`, ensure the following variables match your IDs:
+    *   `USER_DB_ID`
+    *   `REGISTRY_SS_ID`
+    *   `MASTER_ID`
+    *   `FOLDER_ID` (for PDF storage)
+
+### 4. Web App Deployment
+1.  Click **Deploy** > **New Deployment**.
+2.  Select **Web App**.
+3.  Execute As: **Me** (The Admin).
+4.  Who has access: **Anyone within [Your Domain]**.
+5.  Authorize permissions for **Drive, Gmail, and Sheets**.
+
+---
 
 ## Usage Examples
 
-Client-side example — submit an endorsement via fetch:
+### Executing a Search & Form Population
+The following snippet demonstrates how the frontend handles the "Strict Search" to pull data from master spreadsheets into the RFP form.
+
 ```javascript
-// Replace with your deployed web app URL
-const WEB_APP_URL = 'https://script.google.com/macros/s/REPLACE_WITH_ID/exec';
+/**
+ * Copy-Paste Ready: RFP Search Pattern
+ * Triggers the backend lookup of an RFP or Invoice number
+ * within a specific source spreadsheet.
+ */
 
-async function endorseRfp(rfpNumber, endorsedBy) {
-  const resp = await fetch(WEB_APP_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'endorse', rfp: rfpNumber, endorsedBy })
-  });
-  return resp.json();
+function performDataLookup() {
+    const sourceFile = "Malls_Master_2024.xlsx";
+    const rfpNumber = "MALL-2024-05-0000001";
+    
+    console.log("Searching for validated record...");
+
+    google.script.run
+        .withSuccessHandler((response) => {
+            if (response.status === "FOUND") {
+                // Populate the Vue.js particulars object
+                const record = response.data[0]; 
+                console.log("Record identified:", record["PAYEE NAME"]);
+                alert("Data Loaded: " + record["SOA AMOUNT"]);
+            } else if (response.status === "ALREADY_PAID") {
+                alert("Warning: This invoice has already been processed.");
+            } else {
+                alert("No match found in source file.");
+            }
+        })
+        .withFailureHandler((err) => {
+            console.error("Search Engine Error:", err.message);
+        })
+        .getRfpDataAdvanced(sourceFile, rfpNumber, "");
 }
-
-// Example usage:
-endorseRfp('RFP-2026-001', 'jane.doe@pcu.local').then(console.log).catch(console.error);
 ```
 
-Server-side Apps Script example — handle POST requests:
-```javascript
-// Code.gs
-function doPost(e) {
-  try {
-    const payload = JSON.parse(e.postData.contents);
-    if (payload.action === 'endorse' && payload.rfp) {
-      // TODO: Validate payload and store endorsement (e.g., in a Sheet or DB)
-      // Example response:
-      const result = { status: 'success', rfp: payload.rfp, endorsedBy: payload.endorsedBy || null };
-      return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
-    }
-    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'invalid action or missing rfp' })).setMimeType(ContentService.MimeType.JSON);
-  } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.message })).setMimeType(ContentService.MimeType.JSON);
-  }
-}
-```
+---
 
-Security and operational notes:
-- Validate and sanitize all incoming data before storing.
-- Restrict web app access to your organization as needed.
-- Log endorsements and maintain an audit trail (e.g., Google Sheets or a secure DB).
+## Tech Stack
+*   **Backend:** Google Apps Script (V8)
+*   **Frontend:** Vue.js 3
+*   **UI Framework:** Bootstrap 5.3
+*   **PDF Engine:** Google HTML-to-PDF Conversion
+*   **Security:** Script Cache Service (OTP) & Google Session Authentication
 
-- For MCD Internal Use Only
+---
+
+> **Warning**  
+> **- For MCD Internal Use Only**  
+> This application handles sensitive financial endorsement data. Distribution of the source code or database IDs outside of authorized personnel is strictly prohibited.
