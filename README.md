@@ -31,7 +31,7 @@ Key capabilities:
 
 ---
 
-## Repo structure (what I found)
+## Repo structure
 - `code.gs` — Google Apps Script server code (business logic, data access, email, Drive).
 - `index.html` — Single-file frontend (Vue 3) with all UI components and client-side calls to `google.script.run`.
 - `README.md` — (this file will replace the repository README with consolidated docs).
