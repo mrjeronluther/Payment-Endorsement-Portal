@@ -10,10 +10,7 @@ Table of contents
 - Frontend / Backend integration
 - Exposed backend functions (API surface)
 - UI walkthrough (major views & flows)
-- Security considerations and recommendations
-- Troubleshooting & common errors
-- Development & deployment tips
-- Contributing & license
+
 
 ---
 
