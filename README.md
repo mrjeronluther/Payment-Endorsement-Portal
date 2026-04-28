@@ -51,11 +51,6 @@ You require three specific Google Sheets to act as the backend:
 The following snippet demonstrates how the frontend handles the "Strict Search" to pull data from master spreadsheets into the RFP form.
 
 ```javascript
-/**
- * Copy-Paste Ready: RFP Search Pattern
- * Triggers the backend lookup of an RFP or Invoice number
- * within a specific source spreadsheet.
- */
 
 function performDataLookup() {
     const sourceFile = "Malls_Master_2024.xlsx";
