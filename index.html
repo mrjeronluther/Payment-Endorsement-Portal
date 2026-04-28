@@ -167,6 +167,34 @@
         text-align: center;
       }
     }
+
+    .custom-dropdown-menu {
+      border: 1px solid #dee2e6;
+      border-top: none;
+      background: white;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .custom-dropdown-menu .list-group-item {
+      cursor: pointer;
+      font-size: 0.9rem;
+      padding: 10px 15px;
+      border: none;
+      border-bottom: 1px solid #f8f9fa;
+    }
+
+    .custom-dropdown-menu .list-group-item:last-child {
+      border-bottom: none;
+    }
+
+    .custom-dropdown-menu .list-group-item:hover {
+      background-color: #f0f7ff;
+      color: #0d6efd;
+    }
+
+    .cursor-pointer {
+      cursor: pointer;
+    }
   </style>
 </head>
 
@@ -191,24 +219,13 @@
             <h5 class="modal-title fw-bold" :class="alertTypeClass">
               <i :class="alertIconClass"></i> {{ alertTitle }}
             </h5>
-            <button
-                type="button"
-                class="btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-              ></button>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body text-center py-4">
             <p class="fs-5">{{ alertMessage }}</p>
           </div>
           <div class="modal-footer border-0 justify-content-center">
-            <button
-                type="button"
-                class="btn btn-primary px-4"
-                data-bs-dismiss="modal"
-              >
-                Acknowledge
-              </button>
+            <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">Acknowledge</button>
           </div>
         </div>
       </div>
@@ -221,9 +238,7 @@
             alt="Megaworld Logo"
             style="height: 60px"
           />
-        <h3 class="mt-3 fw-bold text-secondary">
-          PAYMENT ENDORSEMENT PLATFORM
-        </h3>
+        <h3 class="mt-3 fw-bold text-secondary">PAYMENT ENDORSEMENT PLATFORM</h3>
       </div>
 
       <login-view v-if="currentView === 'login'" @navigate="changeView"></login-view>
@@ -326,10 +341,7 @@
               historySet.add(email.toLowerCase().trim());
 
               const updatedHistory = Array.from(historySet).slice(-5);
-              localStorage.setItem(
-                "pep_login_history",
-                JSON.stringify(updatedHistory),
-              );
+              localStorage.setItem("pep_login_history", JSON.stringify(updatedHistory));
               this.suggestedEmails = updatedHistory;
             } catch (e) {
               console.error("History sync failed", e);
@@ -337,11 +349,7 @@
           },
           submitLogin() {
             if (!this.credentials.email || !this.credentials.password) {
-              return this.$root.showCustomAlert(
-                "Input Error",
-                "Enter credentials.",
-                "warning",
-              );
+              return this.$root.showCustomAlert("Input Error", "Enter credentials.", "warning");
             }
 
             this.$root.triggerLoading("Verifying Account Access...", 0);
@@ -355,20 +363,12 @@
                 // Save to custom history and trigger browser save-password prompt
                 this.saveEmailToHistory(this.credentials.email);
 
-                this.$root.showCustomAlert(
-                  "Welcome",
-                  "Login successful.",
-                  "success",
-                );
+                this.$root.showCustomAlert("Welcome", "Login successful.", "success");
                 this.$emit("navigate", "dashboard");
               })
               .withFailureHandler((err) => {
                 this.$root.isLoading = false;
-                this.$root.showCustomAlert(
-                  "Login Failed",
-                  err.message,
-                  "error",
-                );
+                this.$root.showCustomAlert("Login Failed", err.message, "error");
               })
               .authenticateUser(this.credentials);
           },
@@ -479,11 +479,7 @@
         computed: {
           classification() {
             if (!this.form.email) return "N/A";
-            return this.form.email
-              .toLowerCase()
-              .includes("@megaworld-lifestyle.com")
-              ? "ORGANIC"
-              : "NON ORGANIC";
+            return this.form.email.toLowerCase().includes("@megaworld-lifestyle.com") ? "ORGANIC" : "NON ORGANIC";
           },
         },
         mounted() {
@@ -495,11 +491,7 @@
               if (email) {
                 this.form.email = email;
               } else {
-                this.$root.showCustomAlert(
-                  "Auth Error",
-                  "Could not detect Google Session. Please refresh.",
-                  "error",
-                );
+                this.$root.showCustomAlert("Auth Error", "Could not detect Google Session. Please refresh.", "error");
               }
             })
             .withFailureHandler((err) => {
@@ -519,21 +511,13 @@
               })
               .withFailureHandler((err) => {
                 this.loading = false;
-                this.$root.showCustomAlert(
-                  "Registration Blocked",
-                  err.message,
-                  "warning",
-                );
+                this.$root.showCustomAlert("Registration Blocked", err.message, "warning");
               })
               .sendVerificationCode(this.form.email);
           },
           verifyOtp() {
             if (!this.form.otp || this.form.otp.length < 6) {
-              return this.$root.showCustomAlert(
-                "Input Error",
-                "Enter the 6-digit code.",
-                "warning",
-              );
+              return this.$root.showCustomAlert("Input Error", "Enter the 6-digit code.", "warning");
             }
 
             this.loading = true; // Show verification spinner
@@ -544,21 +528,13 @@
               })
               .withFailureHandler((err) => {
                 this.loading = false;
-                this.$root.showCustomAlert(
-                  "Invalid Code",
-                  err.message,
-                  "error",
-                );
+                this.$root.showCustomAlert("Invalid Code", err.message, "error");
               })
               .verifyRegistrationCode(this.form.email, this.form.otp);
           },
           saveUser() {
             if (!this.form.fullName || !this.form.password) {
-              return this.$root.showCustomAlert(
-                "Input Error",
-                "Please fill all profile fields.",
-                "warning",
-              );
+              return this.$root.showCustomAlert("Input Error", "Please fill all profile fields.", "warning");
             }
 
             this.loading = true;
@@ -574,11 +550,7 @@
               .withFailureHandler((err) => {
                 this.$root.isLoading = false;
                 this.loading = false;
-                this.$root.showCustomAlert(
-                  "Persistence Error",
-                  err.message,
-                  "error",
-                );
+                this.$root.showCustomAlert("Persistence Error", err.message, "error");
               })
               .finalizeRegistration(this.form);
           },
@@ -680,9 +652,7 @@
         },
         methods: {
           fetchIdentity() {
-            google.script.run
-              .withSuccessHandler((email) => (this.email = email))
-              .getActiveUserEmail();
+            google.script.run.withSuccessHandler((email) => (this.email = email)).getActiveUserEmail();
           },
           requestOtp() {
             this.uiLoading = true;
@@ -720,11 +690,7 @@
               .withSuccessHandler((res) => {
                 this.$root.isLoading = false;
                 this.uiLoading = false;
-                this.$root.showCustomAlert(
-                  "Update Successful",
-                  res.message,
-                  "success",
-                );
+                this.$root.showCustomAlert("Update Successful", res.message, "success");
 
                 // DELAYED REDIRECT: Prevents logging in before Sheet cache refreshes
                 setTimeout(() => {
@@ -734,11 +700,7 @@
               .withFailureHandler((err) => {
                 this.$root.isLoading = false;
                 this.uiLoading = false;
-                this.$root.showCustomAlert(
-                  "Critical Error",
-                  err.message,
-                  "error",
-                );
+                this.$root.showCustomAlert("Critical Error", err.message, "error");
               })
               .submitPasswordReset(this.email, this.newPassword);
           },
@@ -831,9 +793,7 @@
           },
           showLogoutConfirm() {
             if (!this.logoutModalInstance) {
-              this.logoutModalInstance = new bootstrap.Modal(
-                document.getElementById("logoutConfirmModal"),
-              );
+              this.logoutModalInstance = new bootstrap.Modal(document.getElementById("logoutConfirmModal"));
             }
             this.logoutModalInstance.show();
           },
@@ -852,18 +812,14 @@
               this.$root.currentUser = null;
 
               this.$emit("navigate", "login");
-              this.$root.showCustomAlert(
-                "Logged Out",
-                "You have successfully ended your session.",
-                "success",
-              );
+              this.$root.showCustomAlert("Logged Out", "You have successfully ended your session.", "success");
             }, 1000);
           },
         },
       };
 
       const FormRequestView = {
-  template: `
+        template: `
     <div class="form-request-container animation-fade-in" id="printable-area">
         <!-- Dashboard Navigation -->
         <div class="d-print-none mb-4 d-flex justify-content-between">
@@ -881,14 +837,75 @@
                 <h2 class="text-center mb-4">REQUEST FOR PAYMENT</h2>
                 
                 <div class="row g-4 mb-4">
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold text-secondary small text-uppercase">RFP NO.</label>
-                        <div class="input-group input-group-lg shadow-sm">
-                            <input type="text" class="form-control bg-light" v-model="header.rfpNo" placeholder="Input or Generate RFP No">
-                            <button class="btn btn-primary" type="button" @click="fetchRfpData(0)" title="Search"><i class="bi bi-search"></i></button>
-                            <button class="btn btn-outline-primary" type="button" @click="generateRfp" title="Generate"><i class="bi bi-magic"></i> Generate</button>
-                        </div>
-                    </div>
+
+              <div class="col-12 mb-2">
+    <label class="form-label fw-bold text-secondary small text-uppercase">Source File <span class="text-danger">*</span></label>
+    <div class="position-relative shadow-sm custom-select-wrapper">
+        <div class="input-group">
+            <span class="input-group-text bg-white"><i class="bi bi-folder2-open text-primary"></i></span>
+            <input 
+    type="text" 
+    class="form-control" 
+    placeholder="Click to select or type source file..."
+    v-model="header.sourceFileName"
+    autocomplete="off"
+    @focus="isSourceListOpen = true" 
+    @click="isSourceListOpen = true"
+    @input="isSourceListOpen = true"
+>
+            <button 
+                class="btn btn-outline-secondary" 
+                type="button" 
+                @click="header.sourceFileName = ''; isSourceListOpen = true; selectedSourceObj = null"
+            >
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+
+        <ul v-show="isSourceListOpen && filteredSourceFiles.length > 0" 
+            class="list-group position-absolute w-100 shadow-lg custom-dropdown-menu"
+            style="z-index: 1050; max-height: 250px; overflow-y: auto; margin-top: 2px;">
+            <li 
+                v-for="file in filteredSourceFiles" 
+                :key="file.name + file.tabName"
+                class="list-group-item list-group-item-action cursor-pointer d-flex align-items-center justify-content-between"
+                @click="selectSourceFile(file)"
+            >
+                <div>
+                    <i class="bi bi-file-earmark-spreadsheet me-2 text-success"></i> 
+                    <strong>{{ file.name }}</strong>
+                </div>
+                <span class="badge bg-light text-dark border">
+                    <i class="bi bi-table me-1"></i>{{ file.tabName }}
+                </span>
+            </li>
+        </ul>
+    </div>
+
+    <div class="form-text small text-muted">You must select a source file from the list before searching.</div>
+</div>
+
+                    <div class="col-md-5">
+                      <label class="form-label fw-bold text-secondary small text-uppercase">RFP NO.</label>
+                      <div class="input-group shadow-sm">
+                          <input type="text" class="form-control bg-light" v-model="header.rfpNo" placeholder="Input RFP No">
+                          <button class="btn btn-primary" type="button" @click="fetchDataBySearch" title="Search"><i class="bi bi-search"></i></button>
+                          <button class="btn btn-outline-primary" type="button" @click="generateRfp" title="Generate"><i class="bi bi-magic"></i> Generate</button>
+                      </div>
+                  </div>
+
+                  <!-- NEW: INVOICE NO Field -->
+                  <div class="col-md-4">
+                      <label class="form-label fw-bold text-secondary small text-uppercase">Invoice No.</label>
+                      <div class="input-group shadow-sm">
+                          <input type="text" class="form-control bg-light" v-model="header.invoiceNo" placeholder="Input Invoice No">
+                          <button class="btn btn-primary" type="button" @click="fetchDataBySearch" title="Search"><i class="bi bi-search"></i></button>
+                      </div>
+                  </div>
+
+
+
+
                     <div class="col-md-3">
                         <label class="form-label fw-bold text-secondary small text-uppercase">Date</label>
                         <input type="date" class="form-control form-control-lg bg-light shadow-sm" v-model="header.date" readonly>
@@ -916,26 +933,61 @@
                     </div>
 
                     <!-- Participants Section -->
-                    <div class="mt-4 p-4 border rounded bg-white shadow-sm">
-                        <label class="form-label fw-bold text-primary small text-uppercase"><i class="bi bi-envelope-at-fill me-2"></i> Transaction Participants</label>
-                        <div class="d-flex flex-wrap gap-2 mb-3">
-                            <span v-for="(item, index) in participantList" :key="index" :class="['badge d-flex align-items-center p-2', item.tag === 'Primary' ? 'bg-primary' : 'bg-secondary']">
-                                <small class="me-1">[{{item.tag}}]</small> {{ item.email }}
-                                <i class="bi bi-x-circle ms-2 cursor-pointer" @click="removeEmail(index)"></i>
-                            </span>
-                        </div>
-                        <div class="input-group">
-                            <select class="form-select flex-grow-0" style="width: 120px;" v-model="emailTag">
-                                <option value="Primary">Primary</option>
-                                <option value="Secondary">Secondary</option>
-                            </select>
-                            <input type="email" class="form-control" v-model="emailInput" @keyup.enter="addEmail" placeholder="Select or type email..." list="previousEmails">
-                            <datalist id="previousEmails">
-                                <option v-for="prev in suggestedEmails" :key="prev" :value="prev"></option>
-                            </datalist>
-                            <button class="btn btn-outline-primary" type="button" @click="addEmail">Add</button>
-                        </div>
-                    </div>
+<div class="mt-4 p-4 border rounded bg-white shadow-sm">
+    <label class="form-label fw-bold text-primary small text-uppercase">
+        <i class="bi bi-envelope-at-fill me-2"></i> Transaction Participants
+    </label>
+    
+    <div class="row g-3">
+        <!-- PRIMARY RECIPIENT -->
+        <div class="col-md-5">
+            <label class="form-label small fw-bold text-muted">Primary Recipient <span class="text-danger">*</span></label>
+            <div class="position-relative custom-select-wrapper primary-email-wrapper">
+                <div class="input-group shadow-sm">
+                    <span class="input-group-text bg-white"><i class="bi bi-person-check text-primary"></i></span>
+                    <input type="email" class="form-control" v-model="header.primaryEmail" 
+                           @focus="isPrimaryListOpen = true"
+                           placeholder="Search or type email...">
+                </div>
+                <!-- Custom Dropdown -->
+                <ul v-show="isPrimaryListOpen && filteredPrimarySuggestions.length" 
+                    class="list-group position-absolute w-100 shadow-lg custom-dropdown-menu"
+                    style="z-index: 1070; max-height: 200px; overflow-y: auto; margin-top: 2px;">
+                    <li v-for="email in filteredPrimarySuggestions" :key="email"
+                        class="list-group-item list-group-item-action cursor-pointer small d-flex align-items-center"
+                        @click="selectPrimaryEmail(email)">
+                        <i class="bi bi-envelope me-2 text-secondary"></i> {{ email }}
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- SECONDARY RECIPIENTS -->
+        <div class="col-md-7">
+            <label class="form-label small fw-bold text-muted">Secondary Recipients (Separated by comma)</label>
+            <div class="position-relative custom-select-wrapper secondary-email-wrapper">
+                <div class="input-group shadow-sm">
+                    <span class="input-group-text bg-white"><i class="bi bi-people text-primary"></i></span>
+                    <input type="text" class="form-control" v-model="header.secondaryEmails" 
+                           @focus="handleSecondaryFocus"
+                           @input="updateSecondaryQuery"
+                           placeholder="email1@me.com, email2@me.com...">
+                </div>
+                <!-- Custom Dropdown -->
+                <ul v-show="isSecondaryListOpen && filteredSecondarySuggestions.length" 
+                    class="list-group position-absolute w-100 shadow-lg custom-dropdown-menu"
+                    style="z-index: 1070; max-height: 200px; overflow-y: auto; margin-top: 2px;">
+                    <li v-for="email in filteredSecondarySuggestions" :key="email"
+                        class="list-group-item list-group-item-action cursor-pointer small d-flex align-items-center"
+                        @click="selectSecondaryEmail(email)">
+                        <i class="bi bi-envelope-plus me-2 text-success"></i> {{ email }}
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
 
                     <div class="d-flex justify-content-end mt-5 gap-3">
                         <button class="btn btn-light border px-4" @click="resetFormAfterSubmission">Clear</button>
@@ -948,7 +1000,7 @@
                 <!-- Locked State UI -->
                 <div v-else class="text-center py-5 border rounded bg-light mt-5">
                     <i class="bi bi-shield-lock fs-1 text-muted mb-3 d-block"></i>
-                    <p class="text-muted">Input RFP and set valid Due Date to unlock.</p>
+                    <p class="text-muted">Select Source File, Input RFP and set valid Due Date.</p>
                 </div>
             </div>
         </div>
@@ -1018,16 +1070,90 @@
     </div>
 </div>
     </div>
+    <!-- Multi-Result Selection Modal -->
+<div v-if="isSearchModalOpen" class="modal fade show d-block" style="background: rgba(0,0,0,0.5);">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-card-list me-2"></i> Multiple Matches Found</h5>
+                <button type="button" class="btn-close btn-close-white" @click="isSearchModalOpen = false"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>RFP No.</th>
+                                <th>Invoice No.</th>
+                                <th>Payee</th>
+                                <th>Property</th>
+                                <th>Amount</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(res, index) in searchResults" :key="index">
+                                <td class="fw-bold">{{ res['RFP|PEF NO.'] }}</td>
+                                <td>{{ res['INVOICE NO.'] }}</td>
+                                <td class="small">{{ res['PAYEE NAME'] }}</td>
+                                <td class="small">{{ res['PROPERTY'] }}</td>
+                                <td class="text-primary fw-bold">{{ res['SOA AMOUNT'] }}</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary px-3" @click="selectSearchResult(res)">
+                                        Select
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0">
+                <p class="me-auto text-muted small">Showing {{ searchResults.length }} records from the selected file.</p>
+                <button type="button" class="btn btn-secondary" @click="isSearchModalOpen = false">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
   `,
 
         data() {
           return {
+            // 1. FORM HEADER DATA (Payload for Submission)
             header: {
               rfpNo: "",
+              invoiceNo: "",
               date: new Date().toISOString().split("T")[0],
               dueDate: "",
+              sourceFileName: "", // Bound to the searchable input text
+              sourceFileUrl: "", // Captured URL from selection
+              sourceTabName: "", // Selected tab from the second dropdown
+              primaryEmail: "",
+              secondaryEmails: "",
             },
-            attachment: { name: "", type: "", size: 0, base64: "" },
+
+            // 2. UI STATE CONTROLS
+            isSourceListOpen: false,
+            isPrimaryListOpen: false,
+            isSecondaryListOpen: false,
+            isSearchModalOpen: false,
+            isSubmitting: false,
+
+            // 3. SEARCH & SUGGESTIONS
+            sourceFiles: [], // Array of {name, url, tabs} from backend
+            selectedSourceObj: null, // The full object of the currently selected file
+            sourceSearchQuery: "", // Optional: if you prefer separating input from selection
+            secondaryQuery: "",
+            suggestedEmails: [],
+            searchResults: [], // Results from performStrictSearch
+
+            // 4. TRANSACTION & TABLE CONFIG
+            attachment: {
+              name: "",
+              type: "",
+              size: 0,
+              base64: "",
+            },
             tableFields: [
               "YEAR",
               "MONTH",
@@ -1039,184 +1165,273 @@
               "KINDS OF SERVICE",
               "CONTRACT NO",
               "CONTRACT AMOUNT",
-              "INVOICE NO.",
               "BILLING PERIOD",
               "SOA AMOUNT",
               "GENERAL STATUS",
             ],
-            particulars: {},
-            isSubmitting: false,
-            suggestedEmails: [],
-            emailInput: "",
-            emailTag: "Primary",
-            participantList: [],
+            particulars: {}, // Dynamic storage for loaded record fields
+            cursorIndex: 0, // Navigation for dropdowns
           };
         },
         computed: {
+          // Filtered Primary list (shows all if empty and focused)
+          filteredPrimarySuggestions() {
+            const query = (this.header.primaryEmail || "").toLowerCase();
+            if (!query) return this.suggestedEmails; // Show all on first click
+            return this.suggestedEmails.filter((e) => e.toLowerCase().includes(query));
+          },
+
+          // Filtered Secondary list based on what is after the last comma
+          filteredSecondarySuggestions() {
+            const query = (this.secondaryQuery || "").trim().toLowerCase();
+            // Prevent showing emails already added in the string
+            const currentContent = (this.header.secondaryEmails || "").toLowerCase();
+
+            const available = this.suggestedEmails.filter((email) => {
+              const isMatch = email.toLowerCase().includes(query);
+              const isNotDuplicate = !currentContent.includes(email.toLowerCase() + ",");
+              return isMatch && isNotDuplicate;
+            });
+
+            return available;
+          },
+
+          filteredSourceFiles() {
+            const files = this.sourceFiles || [];
+            const search = (this.header.sourceFileName || "").toLowerCase().trim();
+
+            // If the list is open and nothing is typed, or the list was JUST opened
+            // we return all files.
+            if (!search) {
+              return files;
+            }
+
+            // Filter based on input
+            const results = files.filter((file) => {
+              const fileName = (file.name || "").toLowerCase();
+              const tabName = (file.tabName || "").toLowerCase();
+              return fileName.includes(search) || tabName.includes(search);
+            });
+
+            // UX FIX: If search matches exactly one item (the selected one),
+            // but the user just clicked it, show ALL files so they can switch.
+            if (results.length === 1 && results[0].name === this.header.sourceFileName && this.isSourceListOpen) {
+              return files;
+            }
+
+            return results;
+          },
           minDueDate() {
             return new Date().toISOString().split("T")[0];
           },
           isSecurityValidated() {
-            if (!this.header.rfpNo || !this.header.rfpNo.trim()) return false;
+            const hasSource = !!this.header.sourceFileName;
+            const hasInvoice = !!(this.header.invoiceNo?.trim());
+            
+            // Lock logic: Needs a source and at least an invoice.
+            if (!hasSource || !hasInvoice) return false;
+
+            // Optional: Only validate due date if the user has manually changed it
             if (!this.header.dueDate) return true;
-            const sel = new Date(this.header.dueDate);
-            sel.setHours(0, 0, 0, 0);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            const sel = new Date(this.header.dueDate).setHours(0, 0, 0, 0);
+            const today = new Date().setHours(0, 0, 0, 0);
             return sel >= today;
-          },
+        },
         },
         mounted() {
           this.fetchSuggestedEmails();
+          this.fetchSourceFiles();
+
+          document.addEventListener("click", (e) => {
+            // Handle Source File closing
+            if (!e.target.closest(".custom-select-wrapper")) {
+              this.isSourceListOpen = false;
+            }
+            // Handle Primary closing
+            if (!e.target.closest(".primary-email-wrapper")) {
+              this.isPrimaryListOpen = false;
+            }
+            // Handle Secondary closing
+            if (!e.target.closest(".secondary-email-wrapper")) {
+              this.isSecondaryListOpen = false;
+            }
+          });
         },
+
         methods: {
+          // PRIMARY LOGIC
+          selectPrimaryEmail(email) {
+            this.header.primaryEmail = email;
+            this.isPrimaryListOpen = false;
+          },
+
+          // SECONDARY LOGIC
+          handleSecondaryFocus() {
+            this.updateSecondaryQuery();
+            this.isSecondaryListOpen = true;
+          },
+
+          updateSecondaryQuery() {
+            const input = this.header.secondaryEmails || "";
+            const parts = input.split(",");
+            this.secondaryQuery = parts[parts.length - 1].trim();
+          },
+
+          selectSecondaryEmail(email) {
+            const input = this.header.secondaryEmails || "";
+            const parts = input.split(",");
+            // Replace the last fragment with the selected email
+            parts[parts.length - 1] = ` ${email}`;
+            // Rebuild string and prepare for next entry
+            this.header.secondaryEmails = parts.join(",").trim() + ", ";
+            this.secondaryQuery = "";
+            this.isSecondaryListOpen = true; // Keep open if they want to add another? or false to close.
+          },
+
+          fetchDataBySearch() {
+            if (!this.header.sourceFileName) {
+              return this.$root.showCustomAlert("Warning", "Please select a Source File first.", "warning");
+            }
+            if (!this.header.rfpNo && !this.header.invoiceNo) {
+              return this.$root.showCustomAlert(
+                "Input Needed",
+                "Please provide either an RFP No. or Invoice No.",
+                "warning"
+              );
+            }
+
+            this.$root.triggerLoading("Searching record(s)...", 0);
+
+            google.script.run
+              .withSuccessHandler((res) => {
+                this.$root.isLoading = false;
+
+                if (res.status === "ALREADY_PAID") {
+                  this.initParticulars();
+                  return this.$root.showCustomAlert("Action Blocked", res.message, "warning");
+                }
+
+                if (res.status === "FOUND") {
+                  const matches = res.data; // Now expecting an array
+
+                  if (matches.length === 1) {
+                    this.populateForm(matches[0]);
+                  } else if (matches.length > 1) {
+                    this.searchResults = matches;
+                    this.isSearchModalOpen = true;
+                  } else {
+                    this.$root.showCustomAlert("Not Found", "No matching records in the selected file.", "info");
+                  }
+                }
+              })
+              .withFailureHandler((err) => {
+                this.$root.isLoading = false;
+                this.$root.showCustomAlert("System Error", err.message, "error");
+              })
+              .getRfpDataAdvanced(this.header.sourceFileName, this.header.rfpNo, this.header.invoiceNo);
+          },
+
+          selectSourceFile(file) {
+            // 1. Set the visible filename in the input
+            this.header.sourceFileName = file.name;
+
+            // 2. Set the tab name specifically
+            this.header.sourceTabName = file.tabName;
+
+            // 3. Store the whole object for reference (used in populateForm later)
+            this.selectedSourceObj = file;
+
+            // 4. Close the dropdown
+            this.isSourceListOpen = false;
+
+            console.log("Selected Source:", file.name, "Tab:", file.tabName);
+          },
+          selectSearchResult(record) {
+            this.populateForm(record);
+            this.isSearchModalOpen = false;
+          },
+
+          populateForm(raw) {
+            // 1. Handle Header Fields
+            this.header.rfpNo = raw["RFP|PEF NO."] || "";
+            this.header.invoiceNo = raw["INVOICE NO."] || "";
+            this.header.dueDate = raw["DUE DATE"] || raw["DATE DUE"] || "";
+
+            // 2. Capture Source Metadata
+            // Prioritize metadata returned from the server-side search results
+            this.header.sourceFileUrl = raw["META_SOURCE_URL"] || this.selectedSourceObj?.url || "N/A";
+
+            // Update Tab Name: Check for meta tag first, then selected object, then fallback
+            this.header.sourceTabName = raw["META_TAB_NAME"] || this.selectedSourceObj?.tabName || "MANUAL_ENTRY";
+
+            // Update the visible filename in the UI if not already set
+            if (!this.header.sourceFileName && this.selectedSourceObj) {
+              this.header.sourceFileName = this.selectedSourceObj.fileName || this.selectedSourceObj.name;
+            }
+
+            // 3. Format and map Particulars
+            const formattedData = {};
+            this.tableFields.forEach((field) => {
+              let val = raw[field] !== undefined && raw[field] !== null ? raw[field] : "";
+
+              // Securely parse and format currency/amount fields
+              if (this.isAmountField(field) && val !== "") {
+                const cleanVal = String(val).replace(/[^0-9.-]/g, ""); // Support negative numbers
+                const num = parseFloat(cleanVal);
+
+                val = isNaN(num)
+                  ? ""
+                  : num.toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    });
+              }
+              formattedData[field] = val;
+            });
+
+            this.particulars = formattedData;
+
+            // UI Feedback
+            if (this.$root && typeof this.$root.showCustomAlert === "function") {
+              this.$root.showCustomAlert("Success", "Record loaded successfully.", "success");
+            }
+          },
+          fetchSourceFiles() {
+            google.script.run
+              .withSuccessHandler((data) => {
+                // Assigning to 'sourceFiles' (defined in data())
+                this.sourceFiles = (data || []).map((item) => ({
+                  name: item.fileName || "",
+                  tabName: item.tabName || "",
+                  displayName: `${item.fileName} [${item.tabName}]`,
+                }));
+              })
+              .withFailureHandler((err) => {
+                console.error("Fetch Error:", err);
+              })
+              .getSourceFileNames();
+          },
           isAmountField(field) {
             const amountFields = ["CONTRACT AMOUNT", "SOA AMOUNT"];
             return amountFields.includes(field.toUpperCase());
           },
 
           /**
-           * Restricts input to numbers and one decimal point while typing
-           */
-          onAmountInput(field) {
-            let value = this.particulars[field];
-            // Remove any character that is not a digit or a dot
-            value = value.replace(/[^0-9.]/g, "");
-
-            // Prevent multiple decimals
-            const parts = value.split(".");
-            if (parts.length > 2) {
-              value = parts[0] + "." + parts.slice(1).join("");
-            }
-
-            this.particulars[field] = value;
-          },
-
-          /**
            * Applies the comma separators and 2 decimal places when user leaves the field
            */
-          onAmountBlur(field) {
-            this.applyFormatting(field);
-            let value = this.particulars[field];
-            if (!value) return;
-
-            // Convert to float
-            const num = parseFloat(value);
-
-            if (isNaN(num)) {
-              this.particulars[field] = "";
-            } else {
-              // toLocaleString adds the commas (digit separators)
-              // and minimumFractionDigits ensures centavos are shown (e.g., .00)
-              this.particulars[field] = num.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              });
-            }
-          },
-          applyFormatting(field) {
-            let value = this.particulars[field];
-            if (!value) return;
-
-            // Remove existing commas before parsing to avoid NaN errors
-            const cleanValue = String(value).replace(/,/g, "");
-            const num = parseFloat(cleanValue);
-
-            if (isNaN(num)) {
-              this.particulars[field] = "";
-            } else {
-              this.particulars[field] = num.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              });
-            }
-          },
 
           fetchSuggestedEmails() {
-                google.script.run
-                    .withSuccessHandler((res) => {
-                        // Filters out empty values and ensures it's an array
-                        this.suggestedEmails = (res && Array.isArray(res)) ? res : [];
-                    })
-                    .withFailureHandler((err) => {
-                        console.error("Could not fetch suggestions:", err);
-                    })
-                    .getPreviousParticipantEmails();
-            },
-          fetchRfpData(offset = 0) {
-    if (!this.header.rfpNo)
-        return this.$root.showCustomAlert(
-            "Required",
-            "Please enter an RFP Number.",
-            "warning",
-        );
+            google.script.run
+              .withSuccessHandler((res) => {
+                // Filters out empty values and ensures it's an array
+                this.suggestedEmails = res && Array.isArray(res) ? res : [];
+              })
+              .withFailureHandler((err) => {
+                console.error("Could not fetch suggestions:", err);
+              })
+              .getPreviousParticipantEmails();
+          },
 
-    const safeOffset = parseInt(offset) || 0;
-    const msg = safeOffset === 0
-        ? "Searching..."
-        : `Searching deeper (File index: ${safeOffset})...`;
-    
-    this.$root.triggerLoading(msg, 0);
-
-    google.script.run
-        .withSuccessHandler((res) => {
-            if (!res) {
-                this.$root.isLoading = false;
-                return this.$root.showCustomAlert("Error", "Server returned empty response.", "error");
-            }
-
-            // --- 1. HANDLE FOUND CASE ---
-            if (res.status === "FOUND") {
-                this.$root.isLoading = false;
-                this.header.dueDate = res.dueDate;
-
-                const data = res.particulars;
-                this.tableFields.forEach((field) => {
-                    if (this.isAmountField(field) && data[field]) {
-                        const num = parseFloat(String(data[field]).replace(/[^0-9.]/g, ""));
-                        if (!isNaN(num)) {
-                            data[field] = num.toLocaleString("en-US", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                            });
-                        }
-                    }
-                });
-
-                this.particulars = data;
-                this.$root.showCustomAlert("Success", "Record found and loaded.", "success");
-
-            // --- 2. NEW CASE: HANDLE ALREADY PAID ---
-            } else if (res.status === "ALREADY_PAID") {
-                this.$root.isLoading = false;
-                // We clear the form to prevent accidental submission of paid data
-                this.initParticulars(); 
-                return this.$root.showCustomAlert(
-                    "Action Blocked", 
-                    res.message, // Uses the message sent from Code.gs
-                    "warning"
-                );
-
-            // --- 3. HANDLE SEARCH RECURSION ---
-            } else if (res.status === "CONTINUE") {
-                this.fetchRfpData(Number(res.nextOffset));
-
-            // --- 4. HANDLE NOT FOUND ---
-            } else {
-                this.$root.isLoading = false;
-                this.$root.showCustomAlert(
-                    "Not Found",
-                    "Checked all files. No record found or matching input.",
-                    "info",
-                );
-            }
-        })
-        .withFailureHandler((err) => {
-            this.$root.isLoading = false;
-            this.$root.showCustomAlert("System Error", err.message, "error");
-        })
-        .getRfpData(String(this.header.rfpNo), safeOffset);
-},
           generateRfp() {
             this.$root.triggerLoading("Generating RFP...", 0);
             google.script.run
@@ -1224,55 +1439,30 @@
                 this.$root.isLoading = false;
                 this.header.rfpNo = id;
                 this.initParticulars();
-                if (!this.header.dueDate)
-                  this.header.dueDate = new Date().toISOString().split("T")[0];
+                if (!this.header.dueDate) this.header.dueDate = new Date().toISOString().split("T")[0];
               })
               .withFailureHandler((err) => {
                 this.$root.isLoading = false;
-                this.$root.showCustomAlert(
-                  "Error",
-                  "Generation failed: " + err,
-                  "error",
-                );
+                this.$root.showCustomAlert("Error", "Generation failed: " + err, "error");
               })
               .generateRfpNumber();
           },
-          addEmail() {
-            const email = this.emailInput.trim().toLowerCase();
-            const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!email || !regex.test(email))
-              return this.$root.showCustomAlert(
-                "Invalid",
-                "Enter a valid email.",
-                "warning",
-              );
-            if (this.participantList.some((i) => i.email === email))
-              return this.$root.showCustomAlert(
-                "Duplicate",
-                "Email already added.",
-                "info",
-              );
-            this.participantList.push({ email: email, tag: this.emailTag });
-            this.emailInput = "";
-          },
-          removeEmail(index) {
-            this.participantList.splice(index, 1);
-          },
+
           isAmountField(f) {
             return ["CONTRACT AMOUNT", "SOA AMOUNT"].includes(f);
           },
           formatAmount(field) {
-            let val = String(this.particulars[field] || "").replace(
-              /[^0-9.]/g,
-              "",
-            );
+            if (!this.isAmountField(field)) return;
+            let val = String(this.particulars[field] || "").replace(/[^0-9.]/g, "");
             const num = parseFloat(val);
-            this.particulars[field] = isNaN(num)
-              ? ""
-              : num.toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                });
+            if (isNaN(num)) {
+              this.particulars[field] = "";
+            } else {
+              this.particulars[field] = num.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              });
+            }
           },
           handleFileChange(e) {
             const file = e.target.files[0];
@@ -1295,61 +1485,135 @@
           },
 
           submitForm() {
+
+            const hasRfp = !!(this.header.rfpNo?.trim());
+            const hasInvoice = !!(this.header.invoiceNo?.trim());
+
             // 1. Basic Header Validation
-            if (!this.header.rfpNo)
-              return this.$root.showCustomAlert(
-                "Error",
-                "RFP Number is missing.",
-                "warning",
-              );
-            if (!this.header.dueDate)
-              return this.$root.showCustomAlert(
-                "Error",
-                "Due Date is required.",
-                "warning",
-              );
+            if (!this.header.rfpNo) return this.$root.showCustomAlert("Error", "RFP Number is missing.", "warning");
+            if (!this.header.dueDate) return this.$root.showCustomAlert("Error", "Due Date is required.", "warning");
+
+            // NEW: Ensure Source and Tab are actually selected for the payload
+            if (!this.header.sourceFileName || this.header.sourceFileName === "MANUAL_ENTRY") {
+              console.warn("Submitting as Manual Entry");
+            }
+
+            // 1. Mandatory Identifier Check
+              if (!hasInvoice) {
+                  return this.$root.showCustomAlert("Error", "Invoice Number is required.", "warning");
+              }
+              
+              // Specific logic: if RFP has value, invoice must not be empty 
+              // (This is already covered by !hasInvoice, but let's be explicit if you want)
+              if (hasRfp && !hasInvoice) {
+                  return this.$root.showCustomAlert("Error", "Invoice Number must be provided alongside RFP.", "warning");
+              }
 
             // 2. Security/Date Validation
             if (!this.isSecurityValidated)
-              return this.$root.showCustomAlert(
-                "Error",
-                "Invalid or Past Due Date.",
-                "error",
-              );
+              return this.$root.showCustomAlert("Error", "Invalid or Past Due Date.", "error");
 
             // 3. Particulars Validation
-            const missingFields = this.tableFields.filter(
-              (f) => !String(this.particulars[f] || "").trim(),
-            );
+            const missingFields = this.tableFields.filter((f) => !String(this.particulars[f] || "").trim());
             if (missingFields.length > 0) {
-              return this.$root.showCustomAlert(
-                "Missing Data",
-                "Please fill all particulars fields.",
-                "warning",
-              );
+              return this.$root.showCustomAlert("Missing Data", "Please fill all particulars fields.", "warning");
             }
 
             // 4. File Attachment Validation
             if (!this.attachment.base64) {
-              return this.$root.showCustomAlert(
-                "File Missing",
-                "Please upload the PRF document.",
-                "warning",
-              );
+              return this.$root.showCustomAlert("File Missing", "Please upload the PRF document.", "warning");
             }
 
-            // 5. NEW: Transaction Participants Validation
-            if (!this.participantList || this.participantList.length === 0) {
-              return this.$root.showCustomAlert(
-                "Missing Participants",
-                "Please add at least one Transaction Participant (Primary or Secondary).",
-                "warning",
-              );
+            // 5. Participants Formatting
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const primaryClean = (this.header.primaryEmail || "").trim();
+            if (!emailRegex.test(primaryClean)) {
+              return this.$root.showCustomAlert("Required", "Invalid Primary Email.", "warning");
             }
 
-            // All checks passed
-            this.executeSubmission();
+            const formattedParticipants = [{ email: primaryClean.toLowerCase(), tag: "Primary" }];
+            const secondaryRaw = (this.header.secondaryEmails || "").trim();
+            if (secondaryRaw) {
+              secondaryRaw
+                .split(",")
+                .map((e) => e.trim())
+                .filter((e) => e !== "")
+                .forEach((email) => {
+                  if (emailRegex.test(email)) {
+                    formattedParticipants.push({ email: email.toLowerCase(), tag: "Secondary" });
+                  }
+                });
+            }
+
+            // 6. Build Final Payload and Execute
+            const payload = {
+              header: this.header, // Contains rfpNo, dueDate, sourceFileName, sourceFileUrl, sourceTabName
+              particulars: this.particulars,
+              attachment: this.attachment,
+              participants: formattedParticipants,
+              tableFields: this.tableFields,
+            };
+
+            this.isSubmitting = true;
+            google.script.run
+              .withSuccessHandler((res) => {
+                this.isSubmitting = false;
+                if (res.success) {
+                  this.$root.showCustomAlert(res.message, "Recorded successfully!");
+                   this.resetForm(); 
+                } else {
+                  this.$root.showCustomAlert("Submission Failed", res.message, "danger");
+                }
+              })
+              .withFailureHandler((err) => {
+                this.isSubmitting = false;
+                this.$root.showCustomAlert("Error", err.message, "danger");
+              })
+              .processSubmission(payload);
           },
+
+          resetForm() {
+    // 1. Reset Header Object
+    this.header = {
+        rfpNo: "",
+        invoiceNo: "",
+        date: new Date().toISOString().split("T")[0], // Keep today's date
+        dueDate: "",
+        sourceFileName: "", 
+        sourceTabName: "", 
+        sourceFileUrl: "",
+        primaryEmail: "",
+        secondaryEmails: ""
+    };
+
+    // 2. Clear Particulars (the table details)
+    this.initParticulars();
+
+    // 3. Clear Attachment Object
+    this.attachment = {
+        name: "",
+        type: "",
+        size: 0,
+        base64: ""
+    };
+
+    // 4. CRITICAL: Clear the physical file input from the browser
+    if (this.$refs.fileInput) {
+        this.$refs.fileInput.value = "";
+    }
+
+    // 5. Reset UI states
+    this.isSubmitting = false;
+    this.isSourceListOpen = false;
+    this.isPrimaryListOpen = false;
+    this.isSearchModalOpen = false;
+    
+    // Optional: Refresh suggestions if they were cleared
+    // this.fetchSourceFiles(); 
+    // this.fetchSuggestedEmails();
+
+    console.log("All form fields have been cleared.");
+},
           executeSubmission() {
             this.isSubmitting = true;
             this.$root.triggerLoading("Submitting Request...", 0);
@@ -1365,11 +1629,14 @@
             });
 
             const payload = {
-              header: { ...this.header, payee: this.particulars["PAYEE NAME"] },
+              header: {
+                ...this.header,
+                payee: this.particulars["PAYEE NAME"],
+              },
               attachment: this.attachment,
               particulars: submissionData, // Cleaned data
               tableFields: this.tableFields,
-              participants: this.participantList,
+              participants: this.finalParticipantPayload,
             };
 
             google.script.run
@@ -1377,11 +1644,7 @@
                 this.isSubmitting = false;
                 this.$root.isLoading = false;
                 if (res.success) {
-                  this.$root.showCustomAlert(
-                    "Success",
-                    "RFP recorded successfully.",
-                    "success",
-                  );
+                  this.$root.showCustomAlert("Success", "RFP recorded successfully.", "success");
                   this.resetFormAfterSubmission();
                 } else {
                   this.$root.showCustomAlert("Error", res.message, "error");
@@ -1391,11 +1654,16 @@
           },
           resetFormAfterSubmission() {
             this.header.rfpNo = "";
+            this.header.invoiceNo = ""; // Reset this too
             this.header.dueDate = "";
+            this.header.primaryEmail = "";
+            this.header.secondaryEmails = "";
+            // Note: keeping sourceFileName is usually better for the user,
+            // but if you want it gone: this.header.sourceFileName = "";
+
             this.initParticulars();
             this.attachment = { name: "", type: "", size: 0, base64: "" };
-            this.participantList = [];
-            this.emailInput = "";
+
             if (this.$refs.fileInput) this.$refs.fileInput.value = "";
           },
           goBack() {
@@ -1466,9 +1734,7 @@
             this.alertMessage = message;
             this.alertType = type;
             if (!this.alertModalInstance)
-              this.alertModalInstance = new bootstrap.Modal(
-                document.getElementById("customAlertModal"),
-              );
+              this.alertModalInstance = new bootstrap.Modal(document.getElementById("customAlertModal"));
             this.alertModalInstance.show();
           },
         },
