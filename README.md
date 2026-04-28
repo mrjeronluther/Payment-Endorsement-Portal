@@ -1,4 +1,4 @@
-# Payment Endorsement Portal — Full Documentation
+# Payment Endorsement Portal
 
 Table of contents
 - Project Overview
