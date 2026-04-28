@@ -34,7 +34,7 @@ function getActiveUserEmail() {
 
   if (!finalEmail) {
     throw new Error(
-      "Google Identity not found. Please ensure you are logged into your browser with your company email.",
+      "Google Identity not found. Please ensure you are logged into your browser with your company email."
     );
   }
 
@@ -47,8 +47,7 @@ function getActiveUserEmail() {
  */
 function sendVerificationCode(email) {
   const sessionEmail = Session.getActiveUser().getEmail();
-  if (!email || email !== sessionEmail)
-    throw new Error("Security Violation: Identity mismatch.");
+  if (!email || email !== sessionEmail) throw new Error("Security Violation: Identity mismatch.");
 
   const ss = SpreadsheetApp.openById(USER_DB_ID);
   const sheet = ss.getSheetByName(USER_TAB);
@@ -56,21 +55,14 @@ function sendVerificationCode(email) {
 
   // Index 2 is USERNAME/EMAIL (Column C)
   const alreadyExists = data.some((row) => row[2] === email);
-  if (alreadyExists)
-    throw new Error(
-      "This email is already registered. Please proceed to Login.",
-    );
+  if (alreadyExists) throw new Error("This email is already registered. Please proceed to Login.");
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const cache = CacheService.getScriptCache();
   cache.put(email, otp, 600); // 10 min expiry
 
   try {
-    MailApp.sendEmail(
-      email,
-      "Account Verification Code",
-      "Your verification code is: " + otp,
-    );
+    MailApp.sendEmail(email, "Account Verification Code", "Your verification code is: " + otp);
     return { success: true };
   } catch (e) {
     throw new Error("SMTP Error: Failed to deliver verification email.");
@@ -82,8 +74,7 @@ function sendVerificationCode(email) {
  */
 function verifyRegistrationCode(email, userCode) {
   const sessionEmail = Session.getActiveUser().getEmail();
-  if (email !== sessionEmail)
-    throw new Error("Security Violation: Session hijacked.");
+  if (email !== sessionEmail) throw new Error("Security Violation: Session hijacked.");
 
   const cache = CacheService.getScriptCache();
   const storedCode = cache.get(email);
@@ -127,11 +118,7 @@ function finalizeRegistration(formData) {
     const username = activeUser;
     const accessLevel = "REQUESTOR";
     const permissionStatus = "PENDING";
-    const organicStatus = activeUser
-      .toLowerCase()
-      .includes("@megaworld-lifestyle.com")
-      ? "ORGANIC"
-      : "NON ORGANIC";
+    const organicStatus = activeUser.toLowerCase().includes("@megaworld-lifestyle.com") ? "ORGANIC" : "NON ORGANIC";
 
     // GAP FILLING: Find first empty Row (checks Col B - Full Name)
     const nameCol = sheet.getRange("B:B").getValues();
@@ -150,16 +137,17 @@ function finalizeRegistration(formData) {
      * Column H (Index 8) is ignored entirely.
      */
     const rowPayload = [
-      timestamp, // A: TIMESTAMP
-      formData.fullName, // B: FULL NAME
-      username, // C: USERNAME
-      formData.password, // D: PASSWORD
-      accessLevel, // E: ACCESS LEVEL
-      organicStatus, // F: ORGANIC OR NON ORGANIC
-      permissionStatus, // G: PERMISSION STATUS
+      timestamp, // A
+      formData.fullName, // B
+      username, // C
+      formData.password, // D
+      accessLevel, // E
+      organicStatus, // F
+      permissionStatus, // G
+      "INACTIVE", // H (Better to set a default for safety)
     ];
 
-    // Target columns 1 through 7 (A-G) only. Column 8 (H) is not touched.
+    // Update range to cover 8 columns
     sheet.getRange(targetRow, 1, 1, rowPayload.length).setValues([rowPayload]);
 
     return { success: true, message: "Registered under " + activeUser };
@@ -207,9 +195,7 @@ function authenticateUser(credentials) {
     .trim()
     .toUpperCase();
   if (employeeStatus !== "ACTIVE") {
-    throw new Error(
-      "Access Denied: Your employee status is " + employeeStatus + ".",
-    );
+    throw new Error("Access Denied: Your employee status is " + employeeStatus + ".");
   }
 
   // Validation 2: PERMISSION STATUS (Col G / Index 6)
@@ -256,7 +242,14 @@ function generateRfpNumber() {
       sheet.appendRow(["RFP Number", "Timestamp"]);
     }
 
-    var lastRow = sheet.getLastRow();
+    var data = sheet.getRange("A:A").getValues();
+    var lastRow = 0;
+    for (var i = data.length - 1; i >= 0; i--) {
+      if (data[i][0] != "") {
+        lastRow = i + 1;
+        break;
+      }
+    }
     var nextSuffix = 1;
 
     // 2. Determine Next Suffix (Continuous Sequence)
@@ -280,15 +273,10 @@ function generateRfpNumber() {
 
     // 4. Deduplication Check: Search Column A for the new ID
     var range = sheet.getRange("A:A");
-    var duplicate = range
-      .createTextFinder(newRfp)
-      .matchEntireCell(true)
-      .findNext();
+    var duplicate = range.createTextFinder(newRfp).matchEntireCell(true).findNext();
 
     if (duplicate) {
-      console.warn(
-        "Duplicate detected for " + newRfp + ". Incrementing sequence...",
-      );
+      console.warn("Duplicate detected for " + newRfp + ". Incrementing sequence...");
       // Increment suffix and try again to avoid recursion depth issues
       nextSuffix++;
       newRfp = "MALL-" + yearMonth + "-" + ("0000000" + nextSuffix).slice(-7);
@@ -312,160 +300,152 @@ function generateRfpNumber() {
 }
 
 /**
- * Fetches RFP data based on an RFP number, with a block on records 
- * marked with "GENERAL STATUS" as "PAID".
+ * Fetches the list of filenames and associated tab names from the SOURCEFILES sheet.
+ * Returns an array of objects: [{fileName: string, tabName: string}]
  */
-function getRfpData(rfpNumber, offset = 0) {
-  // Call the high-performance search function
-  const result = performCrossFileSearch(rfpNumber, offset);
+function getSourceFileNames() {
+  const MASTER_ID = "10p-nv_qAN0GzZHAVInyb9_bprk2_sLf08190qdMf8Mc";
+  const ss = SpreadsheetApp.openById(MASTER_ID);
+  const sheet = ss.getSheetByName("SOURCEFILES");
 
-  // CASE 1: A matching record was found
-  if (result.records && result.records.length > 0) {
-    const raw = result.records[0];
+  if (!sheet) {
+    throw new Error("Sheet 'SOURCEFILES' not found in Master Spreadsheet.");
+  }
 
-    // --- SECURITY/STATUS CHECK: BLOCK IF PAID ---
-    // Note: 'raw' uses the keys directly from your sheet headers
-    const currentStatus = String(raw["GENERAL STATUS"] || "").trim().toUpperCase();
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return []; // Return empty if only headers or empty
 
-    if (currentStatus === "PAID") {
+  const headers = data.shift().map((h) => h.toString().trim().toUpperCase());
+
+  // Identify column indices for File Name and Tab Name
+  let nameColIdx = headers.indexOf("FILE NAME");
+  if (nameColIdx === -1) nameColIdx = headers.indexOf("NAME");
+  if (nameColIdx === -1) nameColIdx = 0;
+
+  let tabColIdx = headers.indexOf("TAB NAME");
+  // Fallback to index 1 if "TAB NAME" header is missing
+  if (tabColIdx === -1) tabColIdx = 1;
+
+  // Map data to objects and filter out rows with empty filenames
+  const fileData = data
+    .map((row) => {
       return {
-        status: "ALREADY_PAID",
-        message: "This RFP (" + rfpNumber + ") is already marked as PAID and cannot be retrieved for a new submission."
+        fileName: row[nameColIdx] ? row[nameColIdx].toString().trim() : "",
+        tabName: row[tabColIdx] ? row[tabColIdx].toString().trim() : "",
       };
-    }
-    // --------------------------------------------
+    })
+    .filter((item) => item.fileName !== "");
 
-    // List of specific fields required for your UI form
-    const tableFields = [
-      "YEAR",
-      "MONTH",
-      "PAYOR NAME",
-      "PAYEE NAME",
-      "PROPERTY",
-      "LOCATION",
-      "SECTOR",
-      "KINDS OF SERVICE",
-      "CONTRACT NO",
-      "CONTRACT AMOUNT",
-      "INVOICE NO.",
-      "BILLING PERIOD",
-      "SOA AMOUNT",
-      "GENERAL STATUS",
-    ];
+  // Remove exact duplicates (same FileName + TabName combination)
+  const uniqueData = Array.from(new Set(fileData.map((a) => JSON.stringify(a)))).map((a) => JSON.parse(a));
 
-    // Format the particulars object based on the matched record
-    const formattedParticulars = {};
-    tableFields.forEach((f) => {
-      // If the field exists in the record, use it; otherwise, return empty string
-      formattedParticulars[f] = (raw[f] !== undefined && raw[f] !== null) ? raw[f] : "";
-    });
-
-    return {
-      status: "FOUND",
-      // Handles both header naming conventions "DUE DATE" or "DATE DUE"
-      dueDate: raw["DUE DATE"] || raw["DATE DUE"] || "",
-      particulars: formattedParticulars,
-    };
-  }
-
-  // CASE 2: The script reached the time limit (210s) and needs to run again
-  if (result.nextOffset !== null) {
-    return {
-      status: "CONTINUE",
-      nextOffset: result.nextOffset,
-    };
-  }
-
-  // CASE 3: Entire index was searched and no record was found
-  return { status: "NOT_FOUND" };
+  return uniqueData;
 }
 
 /**
- * Optimized Cross-File Search
- * Searches for rfpNumber across multiple spreadsheets listed in a Master file.
+ * Unified Advanced Search used by the "Search" button in UI
  */
-function performCrossFileSearch(rfpNumber, offset = 0) {
-  const START_TIME = Date.now();
-  const TIME_LIMIT = 210000; // 3.5 minutes (Safe buffer)
-  const cleanInput = rfpNumber.toString().trim().toUpperCase();
+function getRfpDataAdvanced(sourceFile, rfpInput, invoiceInput) {
+  try {
+    const result = performStrictSearch(sourceFile, rfpInput, invoiceInput);
+
+    if (result.length > 0) {
+      // 1. Check if the FIRST match is already PAID
+      // (Assumption: if one matches and is PAID, the record is locked)
+      const currentStatus = String(result[0]["GENERAL STATUS"] || "")
+        .trim()
+        .toUpperCase();
+
+      if (currentStatus === "PAID") {
+        return {
+          status: "ALREADY_PAID",
+          message: "The record found (" + (rfpInput || invoiceInput) + ") is already marked as PAID.",
+        };
+      }
+
+      // 2. Return data if allowed
+      return {
+        status: "FOUND",
+        data: result,
+      };
+    }
+
+    return { status: "NOT_FOUND" };
+  } catch (e) {
+    throw new Error("Search logic failed: " + e.message);
+  }
+}
+
+function performStrictSearch(selectedSource, rfpInput, invoiceInput) {
+  const rfpClean = String(rfpInput || "")
+    .trim()
+    .toUpperCase();
+  const invClean = String(invoiceInput || "")
+    .trim()
+    .toUpperCase();
 
   const MASTER_ID = "10p-nv_qAN0GzZHAVInyb9_bprk2_sLf08190qdMf8Mc";
-
-  // 1. Get the list of files to search
   const indexSheet = SpreadsheetApp.openById(MASTER_ID).getSheetByName("SOURCEFILES");
   const indexData = indexSheet.getDataRange().getValues();
-  const indexHeaders = indexData.shift().map(h => h.toString().trim().toUpperCase());
+  const indexHeaders = indexData.shift().map((h) => h.toString().trim().toUpperCase());
 
   const urlColIdx = indexHeaders.indexOf("FILE URL");
   const tabColIdx = indexHeaders.indexOf("TAB NAME");
+  let nameColIdx = indexHeaders.indexOf("FILE NAME");
+  if (nameColIdx === -1) nameColIdx = 0;
 
-  let allMatchedRecords = [];
+  const sourceRow = indexData.find(
+    (row) => row[nameColIdx].toString().trim().toUpperCase() === selectedSource.toUpperCase()
+  );
 
-  for (let i = offset; i < indexData.length; i++) {
-    // Check execution time remaining
-    if (Date.now() - START_TIME > TIME_LIMIT) {
-      return { records: allMatchedRecords, nextOffset: i };
-    }
+  if (!sourceRow) return [];
 
-    let row = indexData[i];
-    let targetUrl = row[urlColIdx];
-    let rawTabNames = row[tabColIdx] ? row[tabColIdx].toString() : "";
+  const targetSs = SpreadsheetApp.openByUrl(sourceRow[urlColIdx]);
+  const tz = targetSs.getSpreadsheetTimeZone();
+  const tabs = sourceRow[tabColIdx]
+    .toString()
+    .split(",")
+    .map((t) => t.trim());
 
-    if (!targetUrl || targetUrl.trim() === "") continue;
+  let matches = [];
 
-    try {
-      let targetSs = SpreadsheetApp.openByUrl(targetUrl);
-      let tz = targetSs.getSpreadsheetTimeZone(); // Dynamic timezone
-      let tabNamesArray = rawTabNames.split(",").map(n => n.trim()).filter(n => n !== "");
+  tabs.forEach((tabName) => {
+    const sheet = targetSs.getSheetByName(tabName);
+    if (!sheet) return;
 
-      for (let tabName of tabNamesArray) {
-        let targetSheet = targetSs.getSheetByName(tabName);
-        if (!targetSheet) continue;
+    const data = sheet.getRange(5, 1, sheet.getLastRow() - 4, sheet.getLastColumn()).getValues();
+    const headers = data[0].map((h) => h.toString().trim().toUpperCase());
 
-        let lastRow = targetSheet.getLastRow();
-        let lastCol = targetSheet.getLastColumn();
-        if (lastRow < 6) continue;
+    const rfpIdx = headers.indexOf("RFP|PEF NO.");
+    const invIdx = headers.indexOf("INVOICE NO.");
 
-        // FETCH ENTIRE DATA RANGE FOR THIS SHEET ONCE (Minimize API Calls)
-        // Optimization: Instead of row-by-row range calls, get everything starting row 5
-        let sheetData = targetSheet.getRange(5, 1, lastRow - 4, lastCol).getValues();
+    for (let r = 1; r < data.length; r++) {
+      const row = data[r];
+      const rfpVal = String(row[rfpIdx] || "")
+        .trim()
+        .toUpperCase();
+      const invVal = String(row[invIdx] || "")
+        .trim()
+        .toUpperCase();
 
-        let fileHeaders = sheetData[0].map(h => h.toString().trim().toUpperCase());
-        let rfpColIdx = fileHeaders.indexOf("RFP|PEF NO.");
-        if (rfpColIdx === -1) continue;
+      let isMatch = false;
+      if (rfpClean && rfpVal === rfpClean) isMatch = true;
+      else if (invClean && invVal === invClean) isMatch = true;
 
-        // Search the data (skipping the header row 0 of sheetData)
-        for (let r = 1; r < sheetData.length; r++) {
-          let cellValue = sheetData[r][rfpColIdx];
-
-          if (cellValue && cellValue.toString().trim().toUpperCase() === cleanInput) {
-            let record = {};
-            let matchRow = sheetData[r];
-
-            fileHeaders.forEach((h, idx) => {
-              let val = matchRow[idx];
-              // Safe check for blank headers
-              let key = h || "COLUMN_" + idx;
-
-              record[key] = (val instanceof Date)
-                ? Utilities.formatDate(val, tz, "yyyy-MM-dd")
-                : val;
-            });
-
-            allMatchedRecords.push(record);
-
-            // If you only want the FIRST found match globally:
-            // return { records: allMatchedRecords, nextOffset: null };
-          }
-        }
+      if (isMatch) {
+        let record = {};
+        headers.forEach((h, idx) => {
+          let val = row[idx];
+          record[h || "COL_" + idx] = val instanceof Date ? Utilities.formatDate(val, tz, "yyyy-MM-dd") : val;
+        });
+        matches.push(record);
       }
-    } catch (e) {
-      console.warn("Skipping " + targetUrl + " due to error: " + e.message);
     }
-  }
+  });
 
-  return { records: allMatchedRecords, nextOffset: null };
+  return matches;
 }
+
 /**
  * FORGOT PASSWORD - STAGE 1: Check account and send OTP
  * Triggered by: google.script.run.requestPasswordResetCode(email)
@@ -473,9 +453,7 @@ function performCrossFileSearch(rfpNumber, offset = 0) {
 function requestPasswordResetCode(email) {
   const sessionEmail = Session.getActiveUser().getEmail();
   if (!email || email !== sessionEmail)
-    throw new Error(
-      "Security Violation: You can only reset the password for your own authenticated account.",
-    );
+    throw new Error("Security Violation: You can only reset the password for your own authenticated account.");
 
   const ss = SpreadsheetApp.openById(USER_DB_ID);
   const sheet = ss.getSheetByName(USER_TAB);
@@ -483,19 +461,14 @@ function requestPasswordResetCode(email) {
 
   // Find index 2 (Column C - USERNAME/EMAIL)
   const accountExists = data.some((row) => row[2] === email);
-  if (!accountExists)
-    throw new Error("No registered account found for this email address.");
+  if (!accountExists) throw new Error("No registered account found for this email address.");
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const cache = CacheService.getScriptCache();
   cache.put("RESET_" + email, otp, 600); // Unique cache key for resets
 
   try {
-    MailApp.sendEmail(
-      email,
-      "Password Reset Code",
-      "Your password reset verification code is: " + otp,
-    );
+    MailApp.sendEmail(email, "Password Reset Code", "Your password reset verification code is: " + otp);
     return { success: true, message: "Verification code sent." };
   } catch (e) {
     throw new Error("SMTP Error: Failed to send reset code.");
@@ -510,8 +483,7 @@ function verifyResetCode(email, userCode) {
   const cache = CacheService.getScriptCache();
   const storedCode = cache.get("RESET_" + email);
 
-  if (!storedCode)
-    throw new Error("Reset code expired. Please request a new one.");
+  if (!storedCode) throw new Error("Reset code expired. Please request a new one.");
   if (storedCode !== userCode) throw new Error("The reset code is incorrect.");
 
   return { success: true, message: "Identity verified for reset." };
@@ -551,9 +523,7 @@ function submitPasswordReset(email, newPassword) {
 
     // Security: Block reusing the same password
     if (newPassword.toString() === currentStoredPassword) {
-      throw new Error(
-        "The new password must be different from your current password.",
-      );
+      throw new Error("The new password must be different from your current password.");
     }
 
     /**
@@ -581,114 +551,108 @@ function submitPasswordReset(email, newPassword) {
  * High-Performance Submission Logic
  * Optimized for datasets exceeding 1 million rows/cells.
  */
+/**
+ * Processes the payment request submission
+ * @param {Object} p - The payload from the frontend
+ */
+/**
+ * PROCESS SUBMISSION - The Single Source of Truth for Validation
+ */
 function processSubmission(p) {
   const lock = LockService.getPublicLock();
-  const FOLDER_ID = "1eFcLGXPEnUSi14aPvvA9m2ATV8Racsuf";
   const SS_ID = "1YAvZmCdWXbjOcJA-uUY40e6qVqzyiHcB06NpiPcz6y4";
+  const FOLDER_ID = "1eFcLGXPEnUSi14aPvvA9m2ATV8Racsuf";
+  const MAX_CELL_LIMIT = 9800000; // Limit safety (Google's max is 10M)
 
   try {
-    // 1. CONCURRENCY LOCK (30s timeout)
-    if (!lock.tryLock(30000)) {
-      throw new Error(
-        "Server is congested. Please wait 30 seconds and try again.",
-      );
-    }
+    if (!lock.tryLock(30000)) throw new Error("Server busy. Please try again.");
 
     const ss = SpreadsheetApp.openById(SS_ID);
+
+    // 1. CAPACITY CHECK: Check if Sheet is almost full
+    const totalCells = ss.getSheets().reduce((sum, s) => sum + (s.getMaxRows() * s.getMaxColumns()), 0);
+    if (totalCells >= MAX_CELL_LIMIT) {
+      throw new Error("System Error: Spreadsheet capacity reached. Please archive old data.");
+    }
+
     const sh = ss.getSheetByName("SUBMISSIONS");
 
-    // 2. SCALABILITY & CAPACITY GUARD
-    const MAX_CELLS_LIMIT = 9500000;
-    const currentMaxRows = sh.getMaxRows();
-    const currentMaxCols = sh.getMaxColumns();
-    const currentTotalCells = currentMaxRows * currentMaxCols;
+    // 2. DATA EXTRACTION & VALIDATION
+    const rfpNo = p.header.rfpNo ? p.header.rfpNo.toString().trim() : "";
+    const invNo = p.header.invoiceNo ? p.header.invoiceNo.toString().trim() : "";
+    const hasRfp = rfpNo !== "";
 
-    if (currentTotalCells >= MAX_CELLS_LIMIT) {
-      throw new Error(
-        "Storage Limit Alert: 9.5M cell capacity reached. Please archive data before next submission.",
-      );
+    if (invNo === "") throw new Error("Validation Error: Invoice Number is required.");
+
+    // RFP Duplicate Check (Only if RFP is filled)
+    if (hasRfp) {
+      const duplicate = sh.getRange("F:F").createTextFinder(rfpNo).matchEntireCell(true).findNext();
+      if (duplicate) throw new Error("RFP Number " + rfpNo + " has already been submitted.");
     }
 
-    // 3. VALIDATIONS (Backend Safety)
-    if (!p.header.rfpNo || !p.header.dueDate)
-      throw new Error("RFP Number and Due Date are required.");
-    if (!p.participants || p.participants.length === 0)
-      throw new Error("At least one Transaction Participant is required.");
-    if (!p.participants.some((item) => item.tag === "Primary"))
-      throw new Error("At least one 'Primary' participant is required.");
-
-    // 4. HIGH-SPEED DUPLICATE CHECK
-    // TextFinder is significantly faster than loading the column into an array for large sheets
-    const duplicate = sh
-      .getRange("F:F")
-      .createTextFinder(p.header.rfpNo)
-      .matchEntireCell(true)
-      .findNext();
-    if (duplicate)
-      throw new Error("Duplicate RFP: " + p.header.rfpNo + " already exists.");
-
-    // 5. ASSET GENERATION
+    // 3. FILE ASSETS
     const folder = DriveApp.getFolderById(FOLDER_ID);
-    const blob = Utilities.newBlob(
-      Utilities.base64Decode(p.attachment.base64),
-      "application/pdf",
-      p.header.rfpNo + "_Support.pdf",
-    );
-    const attachmentUrl = folder.createFile(blob).getUrl();
-    const formPdfUrl = createRfpPdf(p, folder);
+    const identifier = hasRfp ? rfpNo : invNo;
+    const blob = Utilities.newBlob(Utilities.base64Decode(p.attachment.base64), "application/pdf", identifier + "_Support.pdf");
+    const uploadedFileUrl = folder.createFile(blob).getUrl();
+    const rfpCopyUrl = (typeof createRfpPdf === 'function') ? createRfpPdf(p, folder) : "N/A";
 
-    // 6. DATA PREPARATION
-    const txnId = "TXN-" + Utilities.getUuid().split("-")[0].toUpperCase();
-    const primaryEmails = p.participants
-      .filter((i) => i.tag === "Primary")
-      .map((i) => i.email)
-      .join(", ");
-    const secondaryEmails = p.participants
-      .filter((i) => i.tag === "Secondary")
-      .map((i) => i.email)
-      .join(", ");
-
-    const rowPrefix = [
-      txnId,
-      new Date(),
-      Session.getActiveUser().getEmail(),
-      primaryEmails,
-      secondaryEmails,
-      p.header.rfpNo,
-      p.header.dueDate,
-    ];
-
-    const rowData = p.tableFields.map((f) => {
-      const val = p.particulars[f];
-      // Strict numeric parsing for Amount fields to ensure spreadsheet math works at scale
-      return f.includes("AMOUNT")
-        ? parseFloat(String(val).replace(/,/g, ""))
-        : val;
+    // 4. THE ROW MAP: Define strictly where each data point lands
+    // This allows you to easily move rows or see column indices at a glance.
+    
+    // Prep Particulars list
+    let partsMap = {};
+    p.tableFields.forEach(f => {
+      let val = p.particulars[f] || "";
+      if (f.toUpperCase().includes("AMOUNT")) val = parseFloat(val.toString().replace(/[^0-9.-]/g, "")) || 0;
+      partsMap[f] = val;
     });
 
-    // Construct the final flattened array for the row
     const finalRowData = [
-      rowPrefix.concat(rowData).concat([attachmentUrl, formPdfUrl]),
+      /* Col A: SUBMISSION ID         */ "TXN-" + Utilities.getUuid().split("-")[0].toUpperCase(),
+      /* Col B: SUBMISSION DATE       */ new Date(),
+      /* Col C: USER EMAIL            */ Session.getActiveUser().getEmail(),
+      /* Col D: PRIMARY RECIPIENT      */ p.participants.filter(x => x.tag === "Primary").map(x => x.email).join(", "),
+      /* Col E: SECONDARY RECIPIENT    */ p.participants.filter(x => x.tag === "Secondary").map(x => x.email).join(", "),
+      /* Col F: RFP|PEF NO.           */ hasRfp ? rfpNo : "N/A",
+      /* Col G: DUE DATE              */ p.header.dueDate || "N/A",
+      
+      /* --- START OF PARTICULARS --- */
+      /* Col H: YEAR                  */ partsMap["YEAR"],
+      /* Col I: MONTH                 */ partsMap["MONTH"],
+      /* Col J: PAYOR NAME            */ partsMap["PAYOR NAME"],
+      /* Col K: PAYEE NAME            */ partsMap["PAYEE NAME"],
+      /* Col L: PROPERTY              */ partsMap["PROPERTY"],
+      /* Col M: LOCATION              */ partsMap["LOCATION"],
+      /* Col N: SECTOR                */ partsMap["SECTOR"],
+      /* Col O: KINDS OF SERVICE      */ partsMap["KINDS OF SERVICE"],
+      /* Col P: CONTRACT NO           */ partsMap["CONTRACT NO"],
+      /* Col Q: CONTRACT AMOUNT       */ partsMap["CONTRACT AMOUNT"],
+
+      /* Col R: INVOICE NO            */ invNo, // <--- INVOICE PLACED AFTER CONTRACT AMOUNT
+
+      /* Col S: BILLING PERIOD        */ partsMap["BILLING PERIOD"],
+      /* Col T: SOA AMOUNT            */ partsMap["SOA AMOUNT"],
+      /* Col U: GENERAL STATUS        */ partsMap["GENERAL STATUS"],
+      /* --- END OF PARTICULARS ---   */
+
+      /* Col V: UPLOADED FILE         */ uploadedFileUrl,
+      /* Col W: RFP COPY              */ rfpCopyUrl,
+      /* Col X: SOURCEFILE            */ p.header.sourceFileName,
+      /* Col Y: SOURCEFILE TABS       */ p.header.sourceTabName
     ];
 
-    // 7. OPTIMIZED DIRECT-WRITE (Handling Millions of Rows)
-    const lastRow = sh.getLastRow();
-
-    // Auto-expand sheet if we are at the very bottom to prevent insertion errors
-    if (lastRow === currentMaxRows) {
-      sh.insertRowsAfter(currentMaxRows, 100); // Pre-emptively add 100 rows
-    }
-
-    // Write directly to the range (Faster than appendRow for massive sheets)
-    const targetRange = sh.getRange(lastRow + 1, 1, 1, finalRowData[0].length);
-    targetRange.setValues(finalRowData);
-
-    // 8. FINAL COMMIT
+    // 5. SUBMIT TO SHEET
+    sh.appendRow(finalRowData);
     SpreadsheetApp.flush();
 
-    return { success: true, message: p.header.rfpNo };
+    // 6. RETURN SUCCESS
+    return {
+      success: true,
+      message: `${hasRfp ? 'RFP Number' : 'Invoice Number'}: ${identifier}`
+    };
+
   } catch (e) {
-    console.error("Critical Submission Error: " + e.message);
     return { success: false, message: e.message };
   } finally {
     if (lock.hasLock()) lock.releaseLock();
@@ -855,17 +819,17 @@ function getPreviousParticipantEmails() {
 
   let emailSet = new Set();
 
-  data.forEach(row => {
+  data.forEach((row) => {
     // Column D (Primary Emails string)
     if (row[0]) {
-      row[0].split(",").forEach(e => {
+      row[0].split(",").forEach((e) => {
         let clean = e.trim().toLowerCase();
         if (clean.includes("@")) emailSet.add(clean);
       });
     }
     // Column E (Secondary Emails string)
     if (row[1]) {
-      row[1].split(",").forEach(e => {
+      row[1].split(",").forEach((e) => {
         let clean = e.trim().toLowerCase();
         if (clean.includes("@")) emailSet.add(clean);
       });
