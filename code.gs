@@ -157,11 +157,8 @@ function finalizeRegistration(formData) {
     lock.releaseLock();
   }
 }
-
 /**
- * AUTHENTICATION (Login Logic)
- * Enforcement: Employee must be ACTIVE & Permission must be ACTIVE
- * FIX: Uses getDisplayValues and Flush to handle numeric passwords like '123'
+ * Main authentication function
  */
 function authenticateUser(credentials) {
   // 1. Force Google to commit all pending changes before reading
@@ -170,45 +167,41 @@ function authenticateUser(credentials) {
   const ss = SpreadsheetApp.openById(USER_DB_ID);
   const sheet = ss.getSheetByName(USER_TAB);
 
-  // 2. Use getDisplayValues() to ensure "123" is read as a string "123"
+  // 2. Read spreadsheet data
   const data = sheet.getDataRange().getDisplayValues();
   data.shift(); // Remove headers
 
-  // 3. Normalize inputs for comparison
-  const inputEmail = String(credentials.email || "")
-    .trim()
-    .toLowerCase();
-  const inputPass = String(credentials.password || "").trim();
+  // 3. Normalize inputs
+  const inputEmail = String(credentials.email || "").trim().toLowerCase();
+  
+  // --- PASSWORD HASHING ---
+  const rawInputPass = String(credentials.password || "").trim();
+  const hashedInputPass = generateSHA256(rawInputPass); 
+  // -------------------------
 
   const userRow = data.find((row) => {
-    const storedEmail = String(row[2] || "")
-      .trim()
-      .toLowerCase();
-    const storedPass = String(row[3] || "").trim();
-    return storedEmail === inputEmail && storedPass === inputPass;
+    const storedEmail = String(row[2] || "").trim().toLowerCase();
+    const storedPass = String(row[3] || "").trim(); // Matches against your 64-character hash
+    return storedEmail === inputEmail && storedPass === hashedInputPass;
   });
 
   if (!userRow) throw new Error("Invalid credentials.");
 
-  // Validation 1: EMPLOYEE STATUS (Col H / Index 7)
-  const employeeStatus = String(userRow[7] || "")
-    .trim()
-    .toUpperCase();
-  if (employeeStatus !== "ACTIVE") {
-    throw new Error("Access Denied: Your employee status is " + employeeStatus + ".");
-  }
+  // --- NEW STATUS LOGIC ---
+  const permission = String(userRow[6] || "").trim().toUpperCase(); // Col G
+  const employeeStatus = String(userRow[7] || "").trim().toUpperCase(); // Col H
 
-  // Validation 2: PERMISSION STATUS (Col G / Index 6)
-  const permission = String(userRow[6] || "")
-    .trim()
-    .toUpperCase();
-  if (permission === "PENDING") {
-    throw new Error("Account Pending: Awaiting admin activation.");
-  }
+  // 1. If not APPROVED, login is rejected regardless of Employee Status
   if (permission !== "APPROVED") {
-    throw new Error("Access Denied: Account status is " + permission + ".");
+    throw new Error(`Access Denied: Account is ${permission}. Contact admin for approval.`);
   }
 
+  // 2. If APPROVED, check if they are RESIGNED
+  if (employeeStatus === "RESIGNED") {
+    throw new Error("Access Denied: Your account is locked because employee status is RESIGNED.");
+  }
+
+  // Logic outcome: (Approved AND not Resigned) will pass through here
   return {
     success: true,
     user: {
@@ -218,6 +211,21 @@ function authenticateUser(credentials) {
       classification: userRow[5],
     },
   };
+}
+
+/**
+ * Helper to generate SHA-256 hash
+ */
+function generateSHA256(input) {
+  const rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, input);
+  let txtHash = "";
+  for (let i = 0; i < rawHash.length; i++) {
+    let hashVal = rawHash[i];
+    if (hashVal < 0) hashVal += 256; 
+    if (hashVal.toString(16).length === 1) txtHash += "0";
+    txtHash += hashVal.toString(16);
+  }
+  return txtHash;
 }
 
 /**
@@ -299,47 +307,37 @@ function generateRfpNumber() {
   }
 }
 
-/**
- * Fetches the list of filenames and associated tab names from the SOURCEFILES sheet.
- * Returns an array of objects: [{fileName: string, tabName: string}]
+/** 
+ * UPDATED: Fetches Filename, Tab, and URL
  */
 function getSourceFileNames() {
   const MASTER_ID = "10p-nv_qAN0GzZHAVInyb9_bprk2_sLf08190qdMf8Mc";
   const ss = SpreadsheetApp.openById(MASTER_ID);
   const sheet = ss.getSheetByName("SOURCEFILES");
 
-  if (!sheet) {
-    throw new Error("Sheet 'SOURCEFILES' not found in Master Spreadsheet.");
-  }
+  if (!sheet) throw new Error("Sheet 'SOURCEFILES' not found.");
 
   const data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return []; // Return empty if only headers or empty
+  if (data.length <= 1) return [];
 
   const headers = data.shift().map((h) => h.toString().trim().toUpperCase());
 
-  // Identify column indices for File Name and Tab Name
+  // Indices
   let nameColIdx = headers.indexOf("FILE NAME");
-  if (nameColIdx === -1) nameColIdx = headers.indexOf("NAME");
-  if (nameColIdx === -1) nameColIdx = 0;
-
   let tabColIdx = headers.indexOf("TAB NAME");
-  // Fallback to index 1 if "TAB NAME" header is missing
-  if (tabColIdx === -1) tabColIdx = 1;
+  let urlColIdx = headers.indexOf("FILE URL"); // Retrieve URL Column
 
-  // Map data to objects and filter out rows with empty filenames
   const fileData = data
     .map((row) => {
       return {
         fileName: row[nameColIdx] ? row[nameColIdx].toString().trim() : "",
         tabName: row[tabColIdx] ? row[tabColIdx].toString().trim() : "",
+        fileUrl: row[urlColIdx] ? row[urlColIdx].toString().trim() : "" // Captured here
       };
     })
     .filter((item) => item.fileName !== "");
 
-  // Remove exact duplicates (same FileName + TabName combination)
-  const uniqueData = Array.from(new Set(fileData.map((a) => JSON.stringify(a)))).map((a) => JSON.parse(a));
-
-  return uniqueData;
+  return fileData;
 }
 
 /**
@@ -638,7 +636,7 @@ function processSubmission(p) {
 
       /* Col V: UPLOADED FILE         */ uploadedFileUrl,
       /* Col W: RFP COPY              */ rfpCopyUrl,
-      /* Col X: SOURCEFILE            */ p.header.sourceFileName,
+      /* Col X: SOURCEFILE            */ p.header.sourceFileUrl || p.header.sourceFileName,
       /* Col Y: SOURCEFILE TABS       */ p.header.sourceTabName
     ];
 
