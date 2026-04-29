@@ -1,0 +1,386 @@
+/**
+ * AUTOMATIC MENU TRIGGER
+ * Creates a custom menu in the Google Sheets UI when the file is opened.
+ */
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  
+  // Create a menu titled 'Automation'
+  ui.createMenu('🚀 Automation')
+    .addItem('Sync All Databases', 'runGlobalDatabaseSync') // (Display Name, Function Name)
+    .addSeparator()
+    .addItem('Check Header Debug', 'debugHeaderLabels')
+    .addToUi();
+}
+
+
+/**
+ * 1. MAIN CONTROLLER
+ * Iterates through the list of external database URLs and triggers the sync.
+ * Includes global error catching and centralized logging.
+ */
+function runGlobalDatabaseSync() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const configSheet = ss.getSheetByName("PEC_PLATFORM_DATABASES");
+  
+  if (!configSheet) {
+    logSystemError("CRITICAL", "Tab 'PEC_PLATFORM_DATABASES' not found.");
+    throw new Error("Critical Error: Tab 'PEC_PLATFORM_DATABASES' not found.");
+  }
+
+  const lastRow = configSheet.getLastRow();
+  if (lastRow < 2) {
+    console.warn("No URLs detected in config sheet.");
+    return;
+  }
+  
+  const urlData = configSheet.getRange(2, 1, lastRow - 1, 1).getValues();
+
+  urlData.forEach((row, index) => {
+    const url = row[0];
+    if (url && url.toString().trim().startsWith("http")) {
+      try {
+        const targetSs = SpreadsheetApp.openByUrl(url);
+        console.log(`--- Processing: ${targetSs.getName()} ---`);
+        executeSyncLogic(targetSs);
+        console.log(`✅ Success: ${targetSs.getName()}`);
+      } catch (e) {
+        logSystemError("DATABASE_ACCESS_ERROR", `Row ${index + 2}: ${e.message}`, url);
+      }
+    }
+  });
+}
+
+/**
+ * 2. CORE SYNC LOGIC
+ * Extracts data, validates chronological "Latest" status, and writes to SUBMISSIONS.
+ * Includes Cell Limit checking and specific "MMM d, yyyy" formatting.
+ */
+/**
+ * 2. CORE SYNC LOGIC
+ * Extracts data, finds the latest status, and skips updates if the latest status is "PAID".
+ */
+function executeSyncLogic(targetSs) {
+  try {
+    const logSheet = targetSs.getSheetByName("ACTION_LOGS");
+    const subSheet = targetSs.getSheetByName("SUBMISSIONS");
+
+    if (!logSheet || !subSheet) {
+      logSystemError("TAB_MISSING", `Required tabs missing in ${targetSs.getName()}`, targetSs.getUrl());
+      return;
+    }
+
+    const logFullData = logSheet.getDataRange().getValues();
+    if (logFullData.length < 2) return;
+
+    const logHeaders = logFullData[0].map(h => String(h).trim().toUpperCase());
+    const logRows = logFullData.slice(1);
+    const getLogIdx = (name) => logHeaders.indexOf(name.toUpperCase());
+    
+    const colMap = {
+      id:       getLogIdx("RFP|PEF NO."),
+      ts:       getLogIdx("Timestamp"),
+      actor:    getLogIdx("Actor Email"),
+      remarks:  getLogIdx("Remarks/Comments"),
+      target:   getLogIdx("Target Email"),
+      file:     getLogIdx("File Upload"),
+      ballWith: getLogIdx("Ball With")
+    };
+
+    if (Object.keys(colMap).filter(k => colMap[k] === -1).length > 0) {
+      logSystemError("HEADER_MISSING", "Check ACTION_LOGS headers", targetSs.getUrl());
+      return;
+    }
+
+    // --- STEP 1: CALCULATE LATEST DATA FROM LOGS ---
+    const logMap = new Map();
+    const latestDataMap = new Map(); 
+
+    logRows.forEach(row => {
+      const id = row[colMap.id];
+      if (!id) return;
+
+      const rawTs = row[colMap.ts];
+      const tsDate = rawTs instanceof Date ? rawTs : new Date(rawTs);
+      const tsString = Utilities.formatDate(tsDate, "GMT+8", "MMM d, yyyy");
+      const fileUrl = row[colMap.file];
+      const hasFile = (fileUrl && String(fileUrl).startsWith("http"));
+
+      const textLine = `${tsString} | ${row[colMap.actor]} | ${row[colMap.target]} | ${row[colMap.remarks]} | ${hasFile ? "File" : "No File"}`;
+      const logEntry = { text: textLine, linkUrl: hasFile ? fileUrl : null, linkText: "File" };
+
+      if (logMap.has(id)) logMap.get(id).push(logEntry);
+      else logMap.set(id, [logEntry]);
+
+      // Track latest chronological info per RFP ID
+      const existingLatest = latestDataMap.get(id);
+      if (!existingLatest || tsDate.getTime() >= existingLatest.ts.getTime()) {
+        latestDataMap.set(id, {
+          ballWith: String(row[colMap.ballWith] || "").trim(),
+          remarks: row[colMap.remarks] || "",
+          ts: tsDate
+        });
+      }
+    });
+
+    // --- STEP 2: PREPARE SUBMISSIONS UPDATE ---
+    const subFullData = subSheet.getDataRange().getValues();
+    const subHeaders = subFullData[0].map(h => String(h).trim().toUpperCase());
+    
+    const idx = {
+      id:   subHeaders.indexOf("RFP|PEF NO."),
+      log:  subHeaders.indexOf("ACTION LOGS"),
+      ball: subHeaders.indexOf("LATEST STATUS (BALL WITH)"),
+      date: subHeaders.indexOf("DATE OF LATEST STATUS"),
+      rem:  subHeaders.indexOf("LATEST REMARKS")
+    };
+
+    // Fetch existing rich text values in case we need to retain them for skipped rows
+    const currentLogs = subSheet.getRange(2, idx.log + 1, subFullData.length - 1, 1).getRichTextValues();
+
+    const richTextValues = [];
+    const latestBallWithValues = [];
+    const latestDateValues = [];
+    const latestRemarksValues = [];
+
+    for (let i = 1; i < subFullData.length; i++) {
+      const rfpId = subFullData[i][idx.id];
+      const latestInfo = latestDataMap.get(rfpId);
+
+      // =============================================================
+      // STOPPER: SKIP IF THE LATEST "BALL WITH" VALUE IS PAID
+      // =============================================================
+      if (latestInfo && latestInfo.ballWith.toUpperCase() === "PAID") {
+        // Keep current values on the sheet for this row
+        richTextValues.push(currentLogs[i - 1]);
+        latestBallWithValues.push([subFullData[i][idx.ball]]);
+        latestDateValues.push([subFullData[i][idx.date]]);
+        latestRemarksValues.push([subFullData[i][idx.rem]]);
+        continue; // Skip calculating/overwriting with new data
+      }
+      // =============================================================
+
+      const entries = logMap.get(rfpId);
+      
+      // Handle Action Logs Construction
+      if (!entries) {
+        richTextValues.push([SpreadsheetApp.newRichTextValue().setText("").build()]);
+      } else {
+        const combinedText = entries.map(e => e.text).join("\n");
+        const builder = SpreadsheetApp.newRichTextValue().setText(combinedText);
+        let currentPos = 0;
+        entries.forEach(e => {
+          if (e.linkUrl) {
+            const start = currentPos + e.text.lastIndexOf(e.linkText);
+            const end = start + e.linkText.length;
+            if (start >= currentPos) builder.setLinkUrl(start, end, e.linkUrl);
+          }
+          currentPos += e.text.length + 1;
+        });
+        richTextValues.push([builder.build()]);
+      }
+
+      // Add data to bulk update arrays
+      latestBallWithValues.push([latestInfo ? latestInfo.ballWith : ""]);
+      latestDateValues.push([latestInfo ? latestInfo.ts : ""]);
+      latestRemarksValues.push([latestInfo ? latestInfo.remarks : ""]);
+    }
+
+    // --- STEP 3: BULK WRITE TO SHEET ---
+    if (richTextValues.length > 0) {
+      const rowCount = richTextValues.length;
+      subSheet.getRange(2, idx.log + 1, rowCount, 1).setRichTextValues(richTextValues);
+      subSheet.getRange(2, idx.ball + 1, rowCount, 1).setValues(latestBallWithValues);
+      subSheet.getRange(2, idx.rem + 1, rowCount, 1).setValues(latestRemarksValues);
+      
+      const dateRange = subSheet.getRange(2, idx.date + 1, rowCount, 1);
+      dateRange.setValues(latestDateValues).setNumberFormat("MMM d, yyyy");
+    }
+
+  } catch (err) {
+    logSystemError("EXECUTION_FAILURE", err.message, targetSs.getUrl());
+  }
+}
+
+/**
+ * 3. LOGGING UTILITY
+ * Writes errors to a 'SYSTEM_LOGS' tab in the master spreadsheet.
+ */
+function logSystemError(type, message, contextUrl = "N/A") {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let logSheet = ss.getSheetByName("SYSTEM_LOGS");
+  
+  if (!logSheet) {
+    logSheet = ss.insertSheet("SYSTEM_LOGS");
+    logSheet.appendRow(["TIMESTAMP", "ERROR_TYPE", "MESSAGE", "URL_CONTEXT"]);
+    logSheet.getRange("A1:D1").setFontWeight("bold").setBackground("#E0E0E0");
+  }
+  
+  logSheet.appendRow([new Date(), type, message, contextUrl]);
+  console.error(`[${type}] ${message}`);
+}
+/**
+ * 3. DEBUG TOOL
+ * Use this to verify why headers might be "missing" due to hidden characters.
+ */
+function debugHeaderLabels() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const logSheet = ss.getSheetByName("ACTION_LOGS");
+  if (!logSheet) return;
+  
+  const headers = logSheet.getRange(1, 1, 1, logSheet.getLastColumn()).getValues()[0];
+  console.log("--- Header Debug (Raw Strings) ---");
+  headers.forEach((h, i) => {
+    console.log(`Col ${i + 1}: [${h}] | Length: ${h.length}`);
+  });
+}
+
+
+/**
+ * Iterates through all databases, reads SUBMISSIONS, and pushes updates back to SOURCEFILES.
+ * Includes advanced error handling for capacity and access limits.
+ */
+function PECPlatformtoPCUSourceFiles() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const configSheet = ss.getSheetByName("PEC_PLATFORM_DATABASES");
+  
+  if (!configSheet) {
+    logSystemError("CRITICAL", "Tab 'PEC_PLATFORM_DATABASES' not found.");
+    return;
+  }
+
+  const dbUrls = configSheet.getRange(2, 1, configSheet.getLastRow() - 1, 1).getValues();
+
+  dbUrls.forEach((dbRow, dbIndex) => {
+    const dbUrl = dbRow[0];
+    if (!dbUrl || !dbUrl.toString().trim().startsWith("http")) return;
+
+    try {
+      const dbSs = SpreadsheetApp.openByUrl(dbUrl);
+      const subSheet = dbSs.getSheetByName("SUBMISSIONS");
+      if (!subSheet) return;
+
+      console.log(`📡 Syncing DB: ${dbSs.getName()}...`);
+      processDatabaseToSource(subSheet);
+      
+    } catch (e) {
+      logSystemError("DB_CONNECTION_FAILED", `Row ${dbIndex + 2}: ${e.message}`, dbUrl);
+    }
+  });
+}
+
+/**
+ * Maps Submissions to Source Files with targeted error handling.
+ */
+/**
+ * Maps Submissions to Source Files with targeted error handling.
+ * UPDATED: Includes a stopper to skip rows where LATEST STATUS is "PAID".
+ */
+function processDatabaseToSource(subSheet) {
+  const subData = subSheet.getDataRange().getValues();
+  if (subData.length < 2) return;
+
+  const subHeaders = subData[0].map(h => String(h).trim().toUpperCase());
+  const idx = {
+    rfp: subHeaders.indexOf("RFP|PEF NO."),
+    ball: subHeaders.indexOf("LATEST STATUS (BALL WITH)"),
+    date: subHeaders.indexOf("DATE OF LATEST STATUS"),
+    rem: subHeaders.indexOf("LATEST REMARKS"),
+    logs: subHeaders.indexOf("ACTION LOGS"),
+    url: subHeaders.indexOf("SOURCEFILE"),
+    tab: subHeaders.indexOf("SOURCEFILE TABS")
+  };
+
+  // Group by Source URL
+  const sourceGroups = {};
+  for (let i = 1; i < subData.length; i++) {
+    const row = subData[i];
+    
+    // ==========================================
+    // STOPPER: SKIP IF LATEST STATUS IS "PAID"
+    // ==========================================
+    const currentStatus = String(row[idx.ball]).trim().toUpperCase();
+    if (currentStatus === "PAID") {
+      continue; // Skip this row and move to the next one
+    }
+    // ==========================================
+
+    const sourceUrl = row[idx.url];
+    if (!sourceUrl || sourceUrl === "N/A") continue;
+
+    if (!sourceGroups[sourceUrl]) sourceGroups[sourceUrl] = [];
+    
+    sourceGroups[sourceUrl].push({
+      rfp: row[idx.rfp],
+      tabName: row[idx.tab],
+      ball: row[idx.ball],
+      date: row[idx.date],
+      rem: row[idx.rem],
+      logsRT: subSheet.getRange(i + 1, idx.logs + 1).getRichTextValue()
+    });
+  }
+
+  // Push to Sources (The logic below remains for overwriting non-PAID data)
+  for (const sUrl in sourceGroups) {
+    try {
+      const sourceSs = SpreadsheetApp.openByUrl(sUrl);
+      
+      const maxCells = 10000000;
+      const currentCells = sourceSs.getSheets().reduce((sum, s) => sum + (s.getMaxRows() * s.getMaxColumns()), 0);
+      
+      if (currentCells >= maxCells) {
+        logSystemError("SOURCE_FULL", `Cannot push data. Spreadsheet reached 10M cell limit.`, sUrl);
+        continue;
+      }
+
+      const updates = sourceGroups[sUrl];
+      updates.forEach(update => {
+        const targetSheet = sourceSs.getSheetByName(update.tabName);
+        if (!targetSheet) {
+          logSystemError("SOURCE_TAB_MISSING", `Tab '${update.tabName}' not found.`, sUrl);
+          return;
+        }
+
+        const targetHeaders = targetSheet.getRange(5, 1, 1, targetSheet.getLastColumn()).getValues()[0]
+                                .map(h => String(h).trim().toUpperCase());
+        
+        const tIdx = {
+          rfp: targetHeaders.indexOf("RFP|PEF NO."),
+          ball: targetHeaders.indexOf("LATEST STATUS (BALL WITH)"),
+          date: targetHeaders.indexOf("DATE OF LATEST STATUS"),
+          rem: targetHeaders.indexOf("LATEST REMARKS"),
+          logs: targetHeaders.indexOf("ACTION LOGS")
+        };
+
+        if (tIdx.rfp === -1) return;
+
+        const rfpCol = targetSheet.getRange(5, tIdx.rfp + 1, targetSheet.getLastRow() - 4).getValues();
+        let foundRowIdx = -1;
+        for (let r = 0; r < rfpCol.length; r++) {
+          if (String(rfpCol[r][0]).trim() === String(update.rfp).trim()) {
+            foundRowIdx = r + 5;
+            break;
+          }
+        }
+
+        if (foundRowIdx !== -1) {
+          try {
+            // Write updates (Overwrites existing data in these cells)
+            if (tIdx.ball !== -1) targetSheet.getRange(foundRowIdx, tIdx.ball + 1).setValue(update.ball);
+            if (tIdx.rem !== -1) targetSheet.getRange(foundRowIdx, tIdx.rem + 1).setValue(update.rem);
+            if (tIdx.date !== -1) {
+              targetSheet.getRange(foundRowIdx, tIdx.date + 1).setValue(update.date).setNumberFormat("MMM d, yyyy");
+            }
+            if (tIdx.logs !== -1 && update.logsRT) {
+              targetSheet.getRange(foundRowIdx, tIdx.logs + 1).setRichTextValue(update.logsRT);
+            }
+          } catch (writeErr) {
+            logSystemError("WRITE_PERMISSION_ERROR", `Locked range error: ${writeErr.message}`, sUrl);
+          }
+        }
+      });
+    } catch (e) {
+      logSystemError("SOURCE_ACCESS_FAILED", e.message, sUrl);
+    }
+  }
+}
