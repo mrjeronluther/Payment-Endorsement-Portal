@@ -1032,14 +1032,14 @@
         </ul>
     </div>
 
-    <div class="form-text small text-muted">You must select a source file from the list before searching.</div>
+    <div class="form-text small text-muted">You must select a source file from the list before searching. If no sourcefile, leave it blank</div>
 </div>
 
                     <div class="col-md-5">
                       <label class="form-label fw-bold text-secondary small text-uppercase">RFP NO.</label>
                       <div class="input-group shadow-sm">
                           <input type="text" class="form-control bg-light" v-model="header.rfpNo" placeholder="Input RFP No">
-                          <button class="btn btn-primary" type="button" @click="fetchDataBySearch" title="Search"><i class="bi bi-search"></i></button>
+                          <button class="btn btn-primary" type="button" @click="fetchDataBySearch" :disabled="!header.sourceFileName" title="Search"><i class="bi bi-search"></i></button>
                           <button class="btn btn-outline-primary" type="button" @click="generateRfp" title="Generate"><i class="bi bi-magic"></i> Generate</button>
                       </div>
                   </div>
@@ -1049,7 +1049,7 @@
                       <label class="form-label fw-bold text-secondary small text-uppercase">Invoice No.</label>
                       <div class="input-group shadow-sm">
                           <input type="text" class="form-control bg-light" v-model="header.invoiceNo" placeholder="Input Invoice No">
-                          <button class="btn btn-primary" type="button" @click="fetchDataBySearch" title="Search"><i class="bi bi-search"></i></button>
+                          <button class="btn btn-primary" type="button"  @click="fetchDataBySearch" :disabled="!header.sourceFileName" title="Search"><i class="bi bi-search"></i></button>
                       </div>
                   </div>
 
@@ -1375,12 +1375,9 @@
             return new Date().toISOString().split("T")[0];
           },
           isSecurityValidated() {
-            const hasSource = !!this.header.sourceFileName;
+         
             const hasInvoice = !!(this.header.invoiceNo?.trim());
-            
-            // Lock logic: Needs a source and at least an invoice.
-            if (!hasSource || !hasInvoice) return false;
-
+  
             // Optional: Only validate due date if the user has manually changed it
             if (!this.header.dueDate) return true;
             const sel = new Date(this.header.dueDate).setHours(0, 0, 0, 0);
@@ -1641,10 +1638,11 @@
             if (!this.header.dueDate) return this.$root.showCustomAlert("Error", "Due Date is required.", "warning");
 
             // NEW: Ensure Source and Tab are actually selected for the payload
-            if (!this.header.sourceFileName || this.header.sourceFileName === "MANUAL_ENTRY") {
-              console.warn("Submitting as Manual Entry");
+            if (!this.header.sourceFileName) {
+                this.header.sourceFileName = "MANUAL_ENTRY";
+                this.header.sourceTabName = "N/A";
+                this.header.sourceFileUrl = "N/A";
             }
-
             // 1. Mandatory Identifier Check
               if (!hasInvoice) {
                   return this.$root.showCustomAlert("Error", "Invoice Number is required.", "warning");
