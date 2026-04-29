@@ -1,6 +1,6 @@
 /**
  * AUTOMATIC MENU TRIGGER
- * Creates a custom menu in the Google Sheets UI when the file is opened.
+ * Creates a custom menu in the Google Sheets UI when the file is opened. Luther
  */
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
