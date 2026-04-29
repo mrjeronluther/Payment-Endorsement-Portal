@@ -9,6 +9,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
   <style>
     /* ==========================================
      BASE UI & LOADING PANE
@@ -194,6 +195,65 @@
     .cursor-pointer {
       cursor: pointer;
     }
+
+    /* Progress Stepper */
+.step-dot {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #e9ecef;
+    color: #adb5bd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+.step-dot.active {
+    background: #0d6efd;
+    color: white;
+}
+.step-line {
+    flex-grow: 1;
+    height: 2px;
+    background: #e9ecef;
+    margin: auto 8px;
+}
+.icon-circle {
+    width: 60px;
+    height: 60px;
+    background: #f8f9fa;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Password Toggle Icon positioning */
+.password-toggle-icon-new {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    z-index: 10;
+    color: #6c757d;
+}
+
+.password-toggle-icon-new:hover {
+    color: #0d6efd;
+}
+
+/* Helpers */
+.tiny { font-size: 0.75rem; }
+.tracking-wider { letter-spacing: 0.05em; }
+.letter-spacing-lg { letter-spacing: 5px; }
+
+/* Animation - requires Animate.css link in header or can be replaced with custom transitions */
+.animate__animated {
+    animation-duration: 0.5s;
+}
   </style>
 </head>
 
@@ -373,95 +433,135 @@
           },
         },
       };
-      const RegisterView = {
-        template: `
-    <div class="auth-container mt-4">
-        <div class="card elegant-card border-0 p-4 shadow-lg">
-            <h4 class="fw-bold text-center mb-4">ACCOUNT CREATION</h4>
+     const RegisterView = {
+  template: `
+    <div class="auth-container mt-5">
+        <div class="card elegant-card border-0 p-4 shadow-lg mx-auto" style="max-width: 450px;">
             
-            <div v-if="step === 1">
-                <label class="small fw-bold text-secondary mb-1">AUTHENTICATED EMAIL</label>
-                <div class="input-group mb-4">
-                    <input type="text" 
-                           class="form-control bg-light" 
-                           v-model="form.email" 
-                           disabled 
-                           readonly 
-                           placeholder="Detecting identity...">
-                    <button class="btn btn-primary px-3" 
-                            @click="requestOtp" 
-                            :disabled="loading || !form.email">
-                        <span v-if="loading" class="spinner-border spinner-border-sm me-1"></span>
-                        Verify
-                    </button>
+            <!-- HEADER SECTION -->
+            <div class="text-center mb-4">
+                <div class="icon-circle mb-3 mx-auto">
+                    <i class="bi bi-person-plus text-primary fs-3"></i>
                 </div>
-                <p class="text-muted tiny text-center">
-                    This app uses your active Google Session to verify your identity.
-                </p>
+                <h4 class="fw-bold m-0">Account Creation</h4>
+                <p class="text-muted small">Please follow the steps to register</p>
             </div>
 
-            <div v-if="step === 2" class="text-center py-2">
-                <p class="small text-muted mb-3">A code was sent to <b>{{ form.email }}</b></p>
+            <!-- STEP INDICATOR -->
+            <div class="d-flex justify-content-between mb-4 px-4">
+                <div :class="['step-dot', step >= 1 ? 'active' : '']">1</div>
+                <div class="step-line"></div>
+                <div :class="['step-dot', step >= 2 ? 'active' : '']">2</div>
+                <div class="step-line"></div>
+                <div :class="['step-dot', step >= 3 ? 'active' : '']">3</div>
+            </div>
+            
+            <!-- STEP 1: IDENTITY -->
+            <div v-if="step === 1" class="animate__animated animate__fadeIn">
+                <label class="form-label tiny fw-bold text-uppercase tracking-wider text-muted">Google Identity</label>
+                <div class="input-group mb-3 border-rounded-custom">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-envelope text-primary"></i></span>
+                    <input type="text" 
+                           class="form-control border-start-0 ps-0 bg-white" 
+                           v-model="form.email" 
+                           disabled 
+                           placeholder="Detecting identity...">
+                </div>
+                <button class="btn btn-primary btn-lg w-100 fw-bold shadow-sm" 
+                        @click="requestOtp" 
+                        :disabled="loading || !form.email">
+                    <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+                    {{ loading ? 'Processing...' : 'Verify Identity' }}
+                </button>
+                <div class="alert alert-light mt-3 border-0 small text-center text-muted">
+                    <i class="bi bi-shield-lock me-1"></i> Identity verified via Active Google Session.
+                </div>
+            </div>
+
+            <!-- STEP 2: OTP VERIFICATION -->
+            <div v-if="step === 2" class="text-center animate__animated animate__fadeIn">
+                <div class="mb-4">
+                    <p class="small text-muted mb-2">A 6-digit code was sent to</p>
+                    <div class="fw-bold text-dark">{{ form.email }}</div>
+                </div>
                 <div class="mb-4">
                     <input type="text" 
-                           class="form-control form-control-lg text-center fw-bold bg-light letter-spacing-1" 
+                           class="form-control form-control-lg text-center fw-bold letter-spacing-lg border-2 shadow-inner bg-light" 
                            v-model="form.otp" 
                            maxlength="6" 
-                           placeholder="000000"
-                           :disabled="loading">
+                           placeholder="000 000"
+                           :disabled="loading"
+                           style="font-size: 1.5rem; letter-spacing: 8px;">
                 </div>
-                <button class="btn btn-success btn-lg w-100 mb-3 shadow-sm fw-bold" 
+                <button class="btn btn-dark btn-lg w-100 mb-3 fw-bold" 
                         @click="verifyOtp" 
                         :disabled="loading">
                     <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-                    {{ loading ? 'Verifying...' : 'Confirm Code' }}
+                    Confirm OTP
                 </button>
-                <button class="btn btn-link btn-sm text-secondary" 
+                <button class="btn btn-link btn-sm text-secondary text-decoration-none" 
                         @click="step = 1" 
-                        :disabled="loading">Edit Email</button>
+                        :disabled="loading">Try another email</button>
             </div>
 
-            <div v-if="step === 3">
+            <!-- STEP 3: ACCOUNT DETAILS -->
+            <div v-if="step === 3" class="animate__animated animate__fadeIn">
                 <div class="mb-3">
-                    <label class="small fw-bold text-secondary">FULL NAME</label>
-                    <input type="text" 
-                           class="form-control bg-light" 
-                           v-model="form.fullName" 
-                           placeholder="ex. Juan Dela Cruz"
-                           :disabled="loading">
-                </div>
-                <div class="mb-3">
-                    <label class="small fw-bold text-secondary">CREATE PASSWORD</label>
-                    <div class="password-wrapper">
-                        <input :type="showPassword ? 'text' : 'password'" 
-                               class="form-control bg-light pe-5" 
-                               v-model="form.password" 
-                               placeholder="••••••••"
+                    <label class="form-label tiny fw-bold text-uppercase tracking-wider text-muted">Full Name</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-person"></i></span>
+                        <input type="text" 
+                               class="form-control bg-light border-start-0 ps-0" 
+                               v-model="form.fullName" 
+                               placeholder="Juan Dela Cruz"
                                :disabled="loading">
-                        <i :class="['bi', showPassword ? 'bi-eye-slash' : 'bi-eye', 'password-toggle-icon']" 
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="form-label tiny fw-bold text-uppercase tracking-wider text-muted">Password</label>
+                    <div class="password-wrapper position-relative">
+                        <div class="input-group">
+                           <span class="input-group-text bg-light border-end-0"><i class="bi bi-key"></i></span>
+                           <input :type="showPassword ? 'text' : 'password'" 
+                                   class="form-control bg-light border-start-0 ps-0 pe-5" 
+                                   v-model="form.password" 
+                                   placeholder="Enter password"
+                                   :disabled="loading">
+                        </div>
+                        <i :class="['bi', showPassword ? 'bi-eye-slash' : 'bi-eye', 'password-toggle-icon-new']" 
                            @click="showPassword = !showPassword"></i>
                     </div>
                 </div>
-                <div class="alert alert-secondary small py-2 mb-4">
-                    <i class="bi bi-shield-check me-2"></i>Access: <b>REQUESTOR</b><br>
-                    <i class="bi bi-tag me-2"></i>Classification: <b>{{ classification }}</b>
+
+                <div class="bg-primary bg-opacity-10 border rounded p-3 mb-4">
+                    <div class="d-flex align-items-center mb-1">
+                        <i class="bi bi-person-badge me-2 text-primary"></i>
+                        <span class="small fw-bold">Role: <span class="text-primary font-monospace">REQUESTOR</span></span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-buildings me-2 text-primary"></i>
+                        <span class="small fw-bold">Classification: <span class="text-primary">{{ classification }}</span></span>
+                    </div>
                 </div>
+
                 <button class="btn btn-primary btn-lg w-100 shadow-sm fw-bold" 
                         @click="saveUser" 
                         :disabled="loading">
-                    <span v-if="loading" class="spinner-border spinner-border-sm me-1"></span>
-                    Finalize Account
+                    <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+                    Finalize Registration
                 </button>
             </div>
 
+            <!-- FOOTER -->
             <div class="text-center mt-4 pt-3 border-top">
-                <a href="#" class="text-decoration-none small text-secondary fw-semibold" @click.prevent="$emit('navigate', 'login')">
-                    <i class="bi bi-arrow-left"></i> Return to Login
-                </a>
+                <button class="btn btn-link btn-sm text-secondary text-decoration-none fw-bold" @click="$emit('navigate', 'login')">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Login
+                </button>
             </div>
         </div>
     </div>
-    `,
+  `,
         data() {
           return {
             step: 1,
@@ -482,8 +582,7 @@
           },
         },
         mounted() {
-          // Automatically fetch the email from the Google Session on load
-          this.$root.triggerLoading("Authenticating identity...", 0);
+         
           google.script.run
             .withSuccessHandler((email) => {
               this.$root.isLoading = false;
@@ -555,81 +654,133 @@
           },
         },
       };
-      const ForgotPasswordView = {
-        template: `
-    <div class="auth-container animation-fade-in mt-5">
-        <div class="card elegant-card border-0 p-4 p-md-5 shadow-lg">
+    const ForgotPasswordView = {
+  template: `
+    <div class="auth-container mt-5">
+        <div class="card elegant-card border-0 p-4 shadow-lg mx-auto" style="max-width: 450px;">
+            
+            <!-- HEADER SECTION -->
             <div class="text-center mb-4">
-                <h4 class="fw-bold text-dark">PASSWORD RESET</h4>
-                <p class="text-muted small" v-if="step === 1">Verify identity via email code</p>
-                <p class="text-muted small" v-if="step === 2">Enter the 6-digit verification code</p>
-                <p class="text-muted small" v-if="step === 3">Create and confirm your new password</p>
+                <div class="icon-circle mb-3 mx-auto">
+                    <i class="bi bi-shield-lock text-primary fs-3"></i>
+                </div>
+                <h4 class="fw-bold m-0">Reset Password</h4>
+                <p class="text-muted small">Regain access to your account</p>
+            </div>
+
+            <!-- STEP INDICATOR -->
+            <div class="d-flex justify-content-between mb-4 px-4">
+                <div :class="['step-dot', step >= 1 ? 'active' : '']">1</div>
+                <div class="step-line"></div>
+                <div :class="['step-dot', step >= 2 ? 'active' : '']">2</div>
+                <div class="step-line"></div>
+                <div :class="['step-dot', step >= 3 ? 'active' : '']">3</div>
             </div>
             
-            <form @submit.prevent="null">
-                <div v-if="step === 1" class="animation-fade-in">
-                    <div class="mb-4">
-                        <label class="form-label fw-bold text-secondary small">REGISTERED EMAIL</label>
-                        <input type="email" class="form-control form-control-lg bg-light" v-model="email" readonly disabled>
-                        <div class="form-text mt-1 small">A reset code will be sent to this authenticated account.</div>
-                    </div>
-                    <button class="btn btn-primary btn-lg w-100 fw-bold shadow-sm" @click="requestOtp" :disabled="uiLoading">
-                        <span v-if="uiLoading" class="spinner-border spinner-border-sm me-2"></span>
-                        {{ uiLoading ? 'Sending...' : 'Send Reset Code' }}
-                    </button>
+            <!-- STEP 1: IDENTITY -->
+            <div v-if="step === 1" class="animate__animated animate__fadeIn">
+                <label class="form-label tiny fw-bold text-uppercase tracking-wider text-muted">Recovery Email</label>
+                <div class="input-group mb-3">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-envelope text-primary"></i></span>
+                    <input type="text" 
+                           class="form-control border-start-0 ps-0 bg-white" 
+                           v-model="email" 
+                           disabled 
+                           placeholder="Detecting identity...">
                 </div>
-
-                <div v-if="step === 2" class="animation-fade-in text-center">
-                    <label class="form-label fw-bold text-secondary small d-block">RESET CODE</label>
-                    <input type="text" class="form-control form-control-lg text-center fw-bold bg-light mb-4 letter-spacing-2" 
-                           v-model="otp" maxlength="6" placeholder="000000" :disabled="uiLoading">
-                    <button class="btn btn-success btn-lg w-100 fw-bold mb-3 shadow-sm" @click="verifyOtp" :disabled="otp.length !== 6 || uiLoading">
-                        <span v-if="uiLoading" class="spinner-border spinner-border-sm me-2"></span>
-                        {{ uiLoading ? 'Verifying...' : 'Verify Code' }}
-                    </button>
-                    <button class="btn btn-link btn-sm text-secondary" @click="step = 1" :disabled="uiLoading">Try Another Method</button>
+                <button class="btn btn-primary btn-lg w-100 fw-bold shadow-sm" 
+                        @click="requestOtp" 
+                        :disabled="uiLoading || !email">
+                    <span v-if="uiLoading" class="spinner-border spinner-border-sm me-2"></span>
+                    {{ uiLoading ? 'Processing...' : 'Send Reset Code' }}
+                </button>
+                <div class="alert alert-light mt-3 border-0 small text-center text-muted">
+                    <i class="bi bi-info-circle me-1"></i> A verification code will be sent to your authenticated Google account.
                 </div>
+            </div>
 
-                <div v-if="step === 3" class="animation-fade-in">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold text-secondary small">NEW PASSWORD</label>
-                        <div class="password-wrapper">
-                            <input :type="showPass ? 'text' : 'password'" 
-                                   class="form-control form-control-lg bg-light pe-5" 
+            <!-- STEP 2: CODE VERIFICATION -->
+            <div v-if="step === 2" class="text-center animate__animated animate__fadeIn">
+                <div class="mb-4">
+                    <p class="small text-muted mb-2">A 6-digit reset code was sent to</p>
+                    <div class="fw-bold text-dark">{{ email }}</div>
+                </div>
+                <div class="mb-4">
+                    <input type="text" 
+                           class="form-control form-control-lg text-center fw-bold border-2 bg-light" 
+                           v-model="otp" 
+                           maxlength="6" 
+                           placeholder="000 000"
+                           :disabled="uiLoading"
+                           style="font-size: 1.5rem; letter-spacing: 8px;">
+                </div>
+                <button class="btn btn-dark btn-lg w-100 mb-3 fw-bold" 
+                        @click="verifyOtp" 
+                        :disabled="uiLoading || otp.length < 6">
+                    <span v-if="uiLoading" class="spinner-border spinner-border-sm me-2"></span>
+                    Verify Reset Code
+                </button>
+                <button class="btn btn-link btn-sm text-secondary text-decoration-none" 
+                        @click="step = 1" 
+                        :disabled="uiLoading">Wrong email?</button>
+            </div>
+
+            <!-- STEP 3: NEW PASSWORD -->
+            <div v-if="step === 3" class="animate__animated animate__fadeIn">
+                <div class="mb-3">
+                    <label class="form-label tiny fw-bold text-uppercase tracking-wider text-muted">New Password</label>
+                    <div class="password-wrapper position-relative">
+                        <div class="input-group">
+                           <span class="input-group-text bg-light border-end-0"><i class="bi bi-key"></i></span>
+                           <input :type="showPass ? 'text' : 'password'" 
+                                   class="form-control bg-light border-start-0 ps-0 pe-5" 
                                    v-model="newPassword" 
                                    placeholder="Min. 8 characters"
                                    :disabled="uiLoading">
-                            <i :class="['bi', showPass ? 'bi-eye-slash' : 'bi-eye', 'password-toggle-icon']" 
-                               @click="showPass = !showPass"></i>
                         </div>
+                        <i :class="['bi', showPass ? 'bi-eye-slash' : 'bi-eye', 'password-toggle-icon-new']" 
+                           @click="showPass = !showPass"></i>
                     </div>
-                    <div class="mb-4">
-                        <label class="form-label fw-bold text-secondary small">CONFIRM NEW PASSWORD</label>
-                        <div class="password-wrapper">
-                            <input :type="showConfirmPass ? 'text' : 'password'" 
-                                   class="form-control form-control-lg bg-light pe-5" 
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label tiny fw-bold text-uppercase tracking-wider text-muted">Confirm Password</label>
+                    <div class="password-wrapper position-relative">
+                        <div class="input-group">
+                           <span class="input-group-text bg-light border-end-0"><i class="bi bi-key-fill"></i></span>
+                           <input :type="showConfirmPass ? 'text' : 'password'" 
+                                   class="form-control bg-light border-start-0 ps-0 pe-5" 
                                    v-model="confirmPassword" 
                                    placeholder="Repeat password"
                                    :disabled="uiLoading">
-                            <i :class="['bi', showConfirmPass ? 'bi-eye-slash' : 'bi-eye', 'password-toggle-icon']" 
-                               @click="showConfirmPass = !showConfirmPass"></i>
                         </div>
-                        <div v-if="confirmPassword && newPassword !== confirmPassword" class="text-danger small mt-1">
-                            <i class="bi bi-exclamation-circle me-1"></i>Passwords do not match.
-                        </div>
+                        <i :class="['bi', showConfirmPass ? 'bi-eye-slash' : 'bi-eye', 'password-toggle-icon-new']" 
+                           @click="showConfirmPass = !showConfirmPass"></i>
                     </div>
-                    <button class="btn btn-primary btn-lg w-100 fw-bold shadow-sm" @click="resetSubmit" 
-                            :disabled="!newPassword || newPassword !== confirmPassword || uiLoading">
-                        <span v-if="uiLoading" class="spinner-border spinner-border-sm me-2"></span>
-                        Update Password
-                    </button>
+                    <div v-if="confirmPassword && newPassword !== confirmPassword" class="text-danger tiny mt-2 fw-bold">
+                        <i class="bi bi-exclamation-circle me-1"></i> Passwords do not match.
+                    </div>
                 </div>
-            </form>
-            
-            <div class="text-center mt-4 border-top pt-3">
-                <a href="#" class="text-decoration-none small text-secondary fw-semibold" @click.prevent="$emit('navigate', 'login')">
-                    <i class="bi bi-arrow-left"></i> Cancel and Login
-                </a>
+
+                <div class="bg-primary bg-opacity-10 border rounded p-3 mb-4 text-center">
+                   <p class="small fw-bold mb-0 text-primary">
+                     <i class="bi bi-check2-circle me-1"></i> Database Security Active
+                   </p>
+                </div>
+
+                <button class="btn btn-primary btn-lg w-100 shadow-sm fw-bold" 
+                        @click="resetSubmit" 
+                        :disabled="!newPassword || newPassword !== confirmPassword || uiLoading">
+                    <span v-if="uiLoading" class="spinner-border spinner-border-sm me-2"></span>
+                    Update Password
+                </button>
+            </div>
+
+            <!-- FOOTER -->
+            <div class="text-center mt-4 pt-3 border-top">
+                <button class="btn btn-link btn-sm text-secondary text-decoration-none fw-bold" @click="$emit('navigate', 'login')">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Login
+                </button>
             </div>
         </div>
     </div>
@@ -1331,20 +1482,17 @@
           },
 
           selectSourceFile(file) {
-            // 1. Set the visible filename in the input
-            this.header.sourceFileName = file.name;
-
-            // 2. Set the tab name specifically
-            this.header.sourceTabName = file.tabName;
-
-            // 3. Store the whole object for reference (used in populateForm later)
-            this.selectedSourceObj = file;
-
-            // 4. Close the dropdown
-            this.isSourceListOpen = false;
-
-            console.log("Selected Source:", file.name, "Tab:", file.tabName);
-          },
+  // Sets visible name for the input box
+  this.header.sourceFileName = file.name;
+  
+  // CRITICAL: Set the Tab Name and File URL to the header object
+  this.header.sourceTabName = file.tabName;
+  this.header.sourceFileUrl = file.url; 
+  
+  this.selectedSourceObj = file;
+  this.isSourceListOpen = false;
+  console.log("Selected URL:", this.header.sourceFileUrl);
+},
           selectSearchResult(record) {
             this.populateForm(record);
             this.isSearchModalOpen = false;
@@ -1396,20 +1544,20 @@
             }
           },
           fetchSourceFiles() {
-            google.script.run
-              .withSuccessHandler((data) => {
-                // Assigning to 'sourceFiles' (defined in data())
-                this.sourceFiles = (data || []).map((item) => ({
-                  name: item.fileName || "",
-                  tabName: item.tabName || "",
-                  displayName: `${item.fileName} [${item.tabName}]`,
-                }));
-              })
-              .withFailureHandler((err) => {
-                console.error("Fetch Error:", err);
-              })
-              .getSourceFileNames();
-          },
+  google.script.run
+    .withSuccessHandler((data) => {
+      this.sourceFiles = (data || []).map((item) => ({
+        name: item.fileName || "",
+        tabName: item.tabName || "",
+        url: item.fileUrl || "", // Make sure URL is mapped here
+        displayName: `${item.fileName} [${item.tabName}]`,
+      }));
+    })
+    .withFailureHandler((err) => {
+      console.error("Fetch Error:", err);
+    })
+    .getSourceFileNames();
+},
           isAmountField(field) {
             const amountFields = ["CONTRACT AMOUNT", "SOA AMOUNT"];
             return amountFields.includes(field.toUpperCase());
