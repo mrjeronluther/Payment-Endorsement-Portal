@@ -99,7 +99,7 @@ function finalizeRegistration(formData) {
     const ss = SpreadsheetApp.openById(USER_DB_ID);
     let sheet = ss.getSheetByName(USER_TAB);
 
-    // Auto-setup if sheet missing (Headers A-H)
+    // Auto-setup if sheet missing
     if (!sheet) {
       sheet = ss.insertSheet(USER_TAB);
       sheet.appendRow([
@@ -110,17 +110,23 @@ function finalizeRegistration(formData) {
         "ACCESS LEVEL",
         "ORGANIC OR NON ORGANIC",
         "PERMISSION STATUS",
-        "EMPLOYEE STATUS", // Col H
+        "EMPLOYEE STATUS",
       ]);
     }
 
     const timestamp = new Date();
     const username = activeUser;
     const accessLevel = "REQUESTOR";
-    const permissionStatus = "PENDING";
+    const permissionStatus = "Pending";
     const organicStatus = activeUser.toLowerCase().includes("@megaworld-lifestyle.com") ? "ORGANIC" : "NON ORGANIC";
 
-    // GAP FILLING: Find first empty Row (checks Col B - Full Name)
+    // --- ENCRYPT PASSWORD HERE ---
+    // We trim to avoid accidental spaces and then convert to SHA-256 hash
+    const rawPassword = String(formData.password || "").trim();
+    const encryptedPassword = generateSHA256(rawPassword);
+    // ------------------------------
+
+    // GAP FILLING: Find first empty Row
     const nameCol = sheet.getRange("B:B").getValues();
     let targetRow = -1;
     for (let i = 1; i < nameCol.length; i++) {
@@ -131,23 +137,17 @@ function finalizeRegistration(formData) {
     }
     if (targetRow === -1) targetRow = sheet.getLastRow() + 1;
 
-    /**
-     * UPDATED LOGIC:
-     * We only prepare data for Columns A through G (7 columns).
-     * Column H (Index 8) is ignored entirely.
-     */
     const rowPayload = [
-      timestamp, // A
-      formData.fullName, // B
-      username, // C
-      formData.password, // D
-      accessLevel, // E
-      organicStatus, // F
-      permissionStatus, // G
-      "INACTIVE", // H (Better to set a default for safety)
+      timestamp,          // Col A
+      formData.fullName,  // Col B
+      username,           // Col C
+      encryptedPassword,  // Col D (Now stored as a hash like "7d0211...")
+      accessLevel,        // Col E
+      organicStatus,      // Col F
+      permissionStatus,   // Col G
+      "INACTIVE",         // Col H
     ];
 
-    // Update range to cover 8 columns
     sheet.getRange(targetRow, 1, 1, rowPayload.length).setValues([rowPayload]);
 
     return { success: true, message: "Registered under " + activeUser };
@@ -157,6 +157,24 @@ function finalizeRegistration(formData) {
     lock.releaseLock();
   }
 }
+
+/**
+ * SHA-256 Hashing Helper Function
+ * Ensures registration and login encryption methods match.
+ */
+function generateSHA256(input) {
+  const rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, input);
+  let txtHash = "";
+  for (let i = 0; i < rawHash.length; i++) {
+    let hashVal = rawHash[i];
+    if (hashVal < 0) hashVal += 256; 
+    if (hashVal.toString(16).length === 1) txtHash += "0";
+    txtHash += hashVal.toString(16);
+  }
+  return txtHash;
+}
+
+
 /**
  * Main authentication function
  */
@@ -213,20 +231,7 @@ function authenticateUser(credentials) {
   };
 }
 
-/**
- * Helper to generate SHA-256 hash
- */
-function generateSHA256(input) {
-  const rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, input);
-  let txtHash = "";
-  for (let i = 0; i < rawHash.length; i++) {
-    let hashVal = rawHash[i];
-    if (hashVal < 0) hashVal += 256; 
-    if (hashVal.toString(16).length === 1) txtHash += "0";
-    txtHash += hashVal.toString(16);
-  }
-  return txtHash;
-}
+
 
 /**
  * ==========================================
@@ -494,25 +499,26 @@ function verifyResetCode(email, userCode) {
 function submitPasswordReset(email, newPassword) {
   const lock = LockService.getScriptLock();
   try {
-    // Wait up to 30 seconds for other processes to finish
     lock.waitLock(30000);
 
     const ss = SpreadsheetApp.openById(USER_DB_ID);
     const sheet = ss.getSheetByName(USER_TAB);
 
-    // getDisplayValues() is critical: it reads "123" as a string, not a number
     const data = sheet.getDataRange().getDisplayValues();
 
     let rowIndex = -1;
-    let currentStoredPassword = "";
+    let currentStoredHash = "";
 
-    // Normalize email for comparison
     const cleanEmail = email.toString().trim().toLowerCase();
+    
+    // --- ENCRYPT NEW PASSWORD ---
+    const hashedNewPassword = generateSHA256(String(newPassword).trim());
+    // ----------------------------
 
     for (let i = 0; i < data.length; i++) {
       if (data[i][2].toString().trim().toLowerCase() === cleanEmail) {
         rowIndex = i + 1;
-        currentStoredPassword = data[i][3]; // Column D
+        currentStoredHash = data[i][3]; // This is now a hash from Col D
         break;
       }
     }
@@ -520,18 +526,16 @@ function submitPasswordReset(email, newPassword) {
     if (rowIndex === -1) throw new Error("Account record not found.");
 
     // Security: Block reusing the same password
-    if (newPassword.toString() === currentStoredPassword) {
+    // We compare the NEW hash against the STORED hash
+    if (hashedNewPassword === currentStoredHash) {
       throw new Error("The new password must be different from your current password.");
     }
 
     /**
-     * Update Column D
-     * We convert to string explicitly to prevent Google Sheets from
-     * treating "123" as a math-ready number.
+     * Update Column D with the encrypted hash
      */
-    sheet.getRange(rowIndex, 4).setValue(newPassword.toString());
+    sheet.getRange(rowIndex, 4).setValue(hashedNewPassword);
 
-    // CRITICAL: Forces Google to commit the save before the script finishes
     SpreadsheetApp.flush();
 
     return {
