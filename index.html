@@ -497,24 +497,20 @@
 
             <!-- STEP 1: IDENTITY -->
             <div v-if="step === 1" class="animate__animated animate__fadeIn">
-                <label class="form-label tiny fw-bold text-uppercase tracking-wider text-muted">Google Identity</label>
+                <label class="form-label tiny fw-bold text-uppercase tracking-wider text-muted">Email Address <span class="text-danger">*</span></label>
                 <div class="input-group mb-3 border-rounded-custom">
                     <span class="input-group-text bg-white border-end-0"><i class="bi bi-envelope text-primary"></i></span>
-                    <input type="text"
+                    <input type="email"
                            class="form-control border-start-0 ps-0 bg-white"
                            v-model="form.email"
-                           disabled
-                           placeholder="Detecting identity...">
+                           placeholder="Enter your email address">
                 </div>
                 <button class="btn btn-primary btn-lg w-100 fw-bold shadow-sm"
                         @click="requestOtp"
                         :disabled="loading || !form.email">
                     <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-                    {{ loading ? 'Processing...' : 'Verify Identity' }}
+                    {{ loading ? 'Processing...' : 'Verify Email' }}
                 </button>
-                <div class="alert alert-light mt-3 border-0 small text-center text-muted">
-                    <i class="bi bi-shield-lock me-1"></i> Identity verified via Active Google Session.
-                </div>
             </div>
 
             <!-- STEP 2: OTP VERIFICATION -->
@@ -540,13 +536,14 @@
                 </button>
                 <button class="btn btn-link btn-sm text-secondary text-decoration-none"
                         @click="step = 1"
-                        :disabled="loading">Try another email</button>
+                        :disabled="loading">Change email address</button>
             </div>
 
             <!-- STEP 3: ACCOUNT DETAILS -->
             <div v-if="step === 3" class="animate__animated animate__fadeIn">
+                <!-- Full Name -->
                 <div class="mb-3">
-                    <label class="form-label tiny fw-bold text-uppercase tracking-wider text-muted">Full Name</label>
+                    <label class="form-label tiny fw-bold text-uppercase tracking-wider text-muted">Full Name <span class="text-danger">*</span></label>
                     <div class="input-group">
                         <span class="input-group-text bg-light border-end-0"><i class="bi bi-person"></i></span>
                         <input type="text"
@@ -557,8 +554,43 @@
                     </div>
                 </div>
 
-                <div class="mb-4">
-                    <label class="form-label tiny fw-bold text-uppercase tracking-wider text-muted">Password</label>
+                <!-- Department -->
+                <div class="mb-3">
+                    <label class="form-label tiny fw-bold text-uppercase tracking-wider text-muted">Department <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-building"></i></span>
+                        <select class="form-select bg-light border-start-0 ps-0" v-model="form.department" :disabled="loading">
+                            <option value="" disabled>Select Department</option>
+                            <option value="PCU">PCU</option>
+                            <option value="RBG Accounting">RBG Accounting</option>
+                            <option value="RBG Treasury">RBG Treasury</option>
+                            <option value="MAG">MAG</option>
+                            <option value="Audit/Corp">Audit/Corp</option>
+                            <option value="Treasury">Treasury</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Job Designation -->
+                <div class="mb-3">
+                    <label class="form-label tiny fw-bold text-uppercase tracking-wider text-muted">Job Designation <span class="fw-normal text-muted small">(Optional)</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-briefcase"></i></span>
+                        <select class="form-select bg-light border-start-0 ps-0" v-model="form.jobDesignation" :disabled="loading">
+                            <option value="">Select Designation</option>
+                            <option value="Staff / Associate">Staff / Associate</option>
+                            <option value="Officer">Officer</option>
+                            <option value="Manager">Manager</option>
+                            <option value="Immediate Suppervisor">Immediate Suppervisor</option>
+                            <option value="Department Head">Department Head</option>
+                            <option value="Division Head">Division Head</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Password -->
+                <div class="mb-3">
+                    <label class="form-label tiny fw-bold text-uppercase tracking-wider text-muted">Password <span class="text-danger">*</span></label>
                     <div class="password-wrapper position-relative">
                         <div class="input-group">
                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-key"></i></span>
@@ -573,10 +605,30 @@
                     </div>
                 </div>
 
+                <!-- Confirm Password -->
+                <div class="mb-4">
+                    <label class="form-label tiny fw-bold text-uppercase tracking-wider text-muted">Confirm Password <span class="text-danger">*</span></label>
+                    <div class="password-wrapper position-relative">
+                        <div class="input-group">
+                           <span class="input-group-text bg-light border-end-0"><i class="bi bi-key-fill"></i></span>
+                           <input :type="showConfirmPassword ? 'text' : 'password'"
+                                   class="form-control bg-light border-start-0 ps-0 pe-5"
+                                   v-model="form.confirmPassword"
+                                   placeholder="Confirm password"
+                                   :disabled="loading">
+                        </div>
+                        <i :class="['bi', showConfirmPassword ? 'bi-eye-slash' : 'bi-eye', 'password-toggle-icon-new']"
+                           @click="showConfirmPassword = !showConfirmPassword"></i>
+                    </div>
+                    <div v-if="form.confirmPassword && form.password !== form.confirmPassword" class="text-danger tiny mt-2 fw-bold">
+                        <i class="bi bi-exclamation-circle me-1"></i> Passwords do not match.
+                    </div>
+                </div>
+
                 <div class="bg-primary bg-opacity-10 border rounded p-3 mb-4">
                     <div class="d-flex align-items-center mb-1">
                         <i class="bi bi-person-badge me-2 text-primary"></i>
-                        <span class="small fw-bold">Role: <span class="text-primary font-monospace">REQUESTOR</span></span>
+                        <span class="small fw-bold">Role: <span class="text-primary font-monospace">{{ dynamicAccessLevel }}</span></span>
                     </div>
                     <div class="d-flex align-items-center">
                         <i class="bi bi-buildings me-2 text-primary"></i>
@@ -586,7 +638,7 @@
 
                 <button class="btn btn-primary btn-lg w-100 shadow-sm fw-bold"
                         @click="saveUser"
-                        :disabled="loading">
+                        :disabled="loading || form.password !== form.confirmPassword">
                     <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
                     Finalize Registration
                 </button>
@@ -606,11 +658,15 @@
             step: 1,
             loading: false,
             showPassword: false,
+            showConfirmPassword: false,
             form: {
               email: "",
               otp: "",
               fullName: "",
+              department: "",
+              jobDesignation: "",
               password: "",
+              confirmPassword: ""
             },
           };
         },
@@ -623,30 +679,25 @@
               ? "ORGANIC"
               : "NON ORGANIC";
           },
-        },
-        mounted() {
-          google.script.run
-            .withSuccessHandler((email) => {
-              this.$root.isLoading = false;
-              if (email) {
-                this.form.email = email;
-              } else {
-                this.$root.showCustomAlert(
-                  "Auth Error",
-                  "Could not detect Google Session. Please refresh.",
-                  "error",
-                );
-              }
-            })
-            .withFailureHandler((err) => {
-              this.$root.isLoading = false;
-              this.$root.showCustomAlert("System Error", err.message, "error");
-            })
-            .getActiveUserEmail();
+          dynamicAccessLevel() {
+            if (!this.form.department) return "PENDING...";
+            return this.form.department === "PCU" ? "REQUESTOR" : "APPROVER";
+          }
         },
         methods: {
           requestOtp() {
             if (!this.form.email) return;
+            
+            // Email format verification
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(this.form.email.trim())) {
+                return this.$root.showCustomAlert(
+                    "Invalid Format",
+                    "Please enter a valid email address.",
+                    "warning"
+                );
+            }
+
             this.loading = true;
             google.script.run
               .withSuccessHandler(() => {
@@ -658,7 +709,7 @@
                 this.$root.showCustomAlert(
                   "Registration Blocked",
                   err.message,
-                  "warning",
+                  "warning"
                 );
               })
               .sendVerificationCode(this.form.email);
@@ -668,11 +719,11 @@
               return this.$root.showCustomAlert(
                 "Input Error",
                 "Enter the 6-digit code.",
-                "warning",
+                "warning"
               );
             }
 
-            this.loading = true; // Show verification spinner
+            this.loading = true;
             google.script.run
               .withSuccessHandler(() => {
                 this.loading = false;
@@ -683,17 +734,25 @@
                 this.$root.showCustomAlert(
                   "Invalid Code",
                   err.message,
-                  "error",
+                  "error"
                 );
               })
               .verifyRegistrationCode(this.form.email, this.form.otp);
           },
           saveUser() {
-            if (!this.form.fullName || !this.form.password) {
+            if (!this.form.fullName || !this.form.department || !this.form.password) {
               return this.$root.showCustomAlert(
                 "Input Error",
-                "Please fill all profile fields.",
-                "warning",
+                "Please fill all mandatory profile fields.",
+                "warning"
+              );
+            }
+
+            if (this.form.password !== this.form.confirmPassword) {
+              return this.$root.showCustomAlert(
+                "Password Error",
+                "Your passwords do not match.",
+                "error"
               );
             }
 
@@ -713,7 +772,7 @@
                 this.$root.showCustomAlert(
                   "Persistence Error",
                   err.message,
-                  "error",
+                  "error"
                 );
               })
               .finalizeRegistration(this.form);
