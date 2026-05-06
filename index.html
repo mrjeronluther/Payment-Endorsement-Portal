@@ -197,63 +197,74 @@
     }
 
     /* Progress Stepper */
-.step-dot {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    background: #e9ecef;
-    color: #adb5bd;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: bold;
-    transition: all 0.3s;
-}
-.step-dot.active {
-    background: #0d6efd;
-    color: white;
-}
-.step-line {
-    flex-grow: 1;
-    height: 2px;
-    background: #e9ecef;
-    margin: auto 8px;
-}
-.icon-circle {
-    width: 60px;
-    height: 60px;
-    background: #f8f9fa;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
+    .step-dot {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #e9ecef;
+      color: #adb5bd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: bold;
+      transition: all 0.3s;
+    }
 
-/* Password Toggle Icon positioning */
-.password-toggle-icon-new {
-    position: absolute;
-    right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    cursor: pointer;
-    z-index: 10;
-    color: #6c757d;
-}
+    .step-dot.active {
+      background: #0d6efd;
+      color: white;
+    }
 
-.password-toggle-icon-new:hover {
-    color: #0d6efd;
-}
+    .step-line {
+      flex-grow: 1;
+      height: 2px;
+      background: #e9ecef;
+      margin: auto 8px;
+    }
 
-/* Helpers */
-.tiny { font-size: 0.75rem; }
-.tracking-wider { letter-spacing: 0.05em; }
-.letter-spacing-lg { letter-spacing: 5px; }
+    .icon-circle {
+      width: 60px;
+      height: 60px;
+      background: #f8f9fa;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-/* Animation - requires Animate.css link in header or can be replaced with custom transitions */
-.animate__animated {
-    animation-duration: 0.5s;
-}
+    /* Password Toggle Icon positioning */
+    .password-toggle-icon-new {
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      z-index: 10;
+      color: #6c757d;
+    }
+
+    .password-toggle-icon-new:hover {
+      color: #0d6efd;
+    }
+
+    /* Helpers */
+    .tiny {
+      font-size: 0.75rem;
+    }
+
+    .tracking-wider {
+      letter-spacing: 0.05em;
+    }
+
+    .letter-spacing-lg {
+      letter-spacing: 5px;
+    }
+
+    /* Animation - requires Animate.css link in header or can be replaced with custom transitions */
+    .animate__animated {
+      animation-duration: 0.5s;
+    }
   </style>
 </head>
 
@@ -278,13 +289,24 @@
             <h5 class="modal-title fw-bold" :class="alertTypeClass">
               <i :class="alertIconClass"></i> {{ alertTitle }}
             </h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
           </div>
           <div class="modal-body text-center py-4">
             <p class="fs-5">{{ alertMessage }}</p>
           </div>
           <div class="modal-footer border-0 justify-content-center">
-            <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">Acknowledge</button>
+            <button
+                type="button"
+                class="btn btn-primary px-4"
+                data-bs-dismiss="modal"
+              >
+                Acknowledge
+              </button>
           </div>
         </div>
       </div>
@@ -297,7 +319,9 @@
             alt="Megaworld Logo"
             style="height: 60px"
           />
-        <h3 class="mt-3 fw-bold text-secondary">PAYMENT ENDORSEMENT PLATFORM</h3>
+        <h3 class="mt-3 fw-bold text-secondary">
+          PAYMENT ENDORSEMENT PLATFORM
+        </h3>
       </div>
 
       <login-view v-if="currentView === 'login'" @navigate="changeView"></login-view>
@@ -314,28 +338,28 @@
     // --- COMPONENT: Login View ---
       const LoginView = {
         template: `
-    <div class="auth-page-static d-flex align-items-center justify-content-center" 
+    <div class="auth-page-static d-flex align-items-center justify-content-center"
          style="height: 100vh; width: 100vw; overflow: hidden; background-color: #f4f7f6; position: fixed; top: 0; left: 0;">
-        
+
         <div class="auth-container animation-fade-in w-100" style="max-width: 520px; padding: 20px;">
             <div class="card elegant-card border-0 p-4 p-md-5 shadow-lg" style="border-radius: 15px;">
-                
+
                 <div class="text-center mb-4">
-                    <img src="https://d2nnykqiaju69u.cloudfront.net/pslife_photos/Maricel_temp/logos/megaworld%20lifestyel%20malls.png" 
+                    <img src="https://d2nnykqiaju69u.cloudfront.net/pslife_photos/Maricel_temp/logos/megaworld%20lifestyel%20malls.png"
                          alt="Megaworld Logo" style="height: 60px;" class="mb-3">
                     <h4 class="fw-bold text-secondary" style="font-size: 1.1rem; letter-spacing: 0.5px;">PAYMENT ENDORSEMENT PLATFORM</h4>
                     <p class="text-muted small">Sign in to your account</p>
                 </div>
-                
+
                 <form @submit.prevent="submitLogin" id="loginForm">
                     <div class="mb-3">
                         <label class="form-label fw-semibold text-secondary small">EMAIL ADDRESS</label>
-                        <input 
-                            type="email" 
-                            name="email" 
-                            class="form-control form-control-lg bg-light border-0 shadow-sm" 
-                            v-model="credentials.email" 
-                            placeholder="example@gmail.com" 
+                        <input
+                            type="email"
+                            name="email"
+                            class="form-control form-control-lg bg-light border-0 shadow-sm"
+                            v-model="credentials.email"
+                            placeholder="example@gmail.com"
                             autocomplete="username email"
                             list="emailHistory"
                             required>
@@ -343,32 +367,32 @@
                             <option v-for="email in suggestedEmails" :key="email" :value="email"></option>
                         </datalist>
                     </div>
-                    
+
                     <div class="mb-4">
                         <label class="form-label fw-semibold text-secondary small">PASSWORD</label>
                         <div class="password-wrapper position-relative">
-                            <input :type="showPassword ? 'text' : 'password'" 
+                            <input :type="showPassword ? 'text' : 'password'"
                                    name="password"
-                                   class="form-control form-control-lg bg-light border-0 shadow-sm pe-5" 
-                                   v-model="credentials.password" 
+                                   class="form-control form-control-lg bg-light border-0 shadow-sm pe-5"
+                                   v-model="credentials.password"
                                    autocomplete="current-password"
                                    required>
-                            <i :class="['bi', showPassword ? 'bi-eye-slash' : 'bi-eye', 'password-toggle-icon']" 
+                            <i :class="['bi', showPassword ? 'bi-eye-slash' : 'bi-eye', 'password-toggle-icon']"
                                style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #6c757d;"
                                @click="showPassword = !showPassword"></i>
                         </div>
                     </div>
-                    
+
                     <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold shadow mb-3" style="border-radius: 8px;">
                         <i class="bi bi-box-arrow-in-right me-2"></i> Log In
                     </button>
                 </form>
-                
+
                 <div class="text-center mt-3">
-                    <a href="#" class="text-decoration-none small text-primary fw-semibold d-block mb-2" 
+                    <a href="#" class="text-decoration-none small text-primary fw-semibold d-block mb-2"
                        @click.prevent="$emit('navigate', 'forgot_password')">Forgot Password?</a>
                     <span class="text-muted small">Don't have an account? </span>
-                    <a href="#" class="text-decoration-none small fw-bold" 
+                    <a href="#" class="text-decoration-none small fw-bold"
                        @click.prevent="$emit('navigate', 'register')">Create Account</a>
                 </div>
             </div>
@@ -400,7 +424,10 @@
               historySet.add(email.toLowerCase().trim());
 
               const updatedHistory = Array.from(historySet).slice(-5);
-              localStorage.setItem("pep_login_history", JSON.stringify(updatedHistory));
+              localStorage.setItem(
+                "pep_login_history",
+                JSON.stringify(updatedHistory),
+              );
               this.suggestedEmails = updatedHistory;
             } catch (e) {
               console.error("History sync failed", e);
@@ -408,7 +435,11 @@
           },
           submitLogin() {
             if (!this.credentials.email || !this.credentials.password) {
-              return this.$root.showCustomAlert("Input Error", "Enter credentials.", "warning");
+              return this.$root.showCustomAlert(
+                "Input Error",
+                "Enter credentials.",
+                "warning",
+              );
             }
 
             this.$root.triggerLoading("Verifying Account Access...", 0);
@@ -422,22 +453,30 @@
                 // Save to custom history and trigger browser save-password prompt
                 this.saveEmailToHistory(this.credentials.email);
 
-                this.$root.showCustomAlert("Welcome", "Login successful.", "success");
+                this.$root.showCustomAlert(
+                  "Welcome",
+                  "Login successful.",
+                  "success",
+                );
                 this.$emit("navigate", "dashboard");
               })
               .withFailureHandler((err) => {
                 this.$root.isLoading = false;
-                this.$root.showCustomAlert("Login Failed", err.message, "error");
+                this.$root.showCustomAlert(
+                  "Login Failed",
+                  err.message,
+                  "error",
+                );
               })
               .authenticateUser(this.credentials);
           },
         },
       };
-     const RegisterView = {
-  template: `
+      const RegisterView = {
+        template: `
     <div class="auth-container mt-5">
         <div class="card elegant-card border-0 p-4 shadow-lg mx-auto" style="max-width: 450px;">
-            
+
             <!-- HEADER SECTION -->
             <div class="text-center mb-4">
                 <div class="icon-circle mb-3 mx-auto">
@@ -455,20 +494,20 @@
                 <div class="step-line"></div>
                 <div :class="['step-dot', step >= 3 ? 'active' : '']">3</div>
             </div>
-            
+
             <!-- STEP 1: IDENTITY -->
             <div v-if="step === 1" class="animate__animated animate__fadeIn">
                 <label class="form-label tiny fw-bold text-uppercase tracking-wider text-muted">Google Identity</label>
                 <div class="input-group mb-3 border-rounded-custom">
                     <span class="input-group-text bg-white border-end-0"><i class="bi bi-envelope text-primary"></i></span>
-                    <input type="text" 
-                           class="form-control border-start-0 ps-0 bg-white" 
-                           v-model="form.email" 
-                           disabled 
+                    <input type="text"
+                           class="form-control border-start-0 ps-0 bg-white"
+                           v-model="form.email"
+                           disabled
                            placeholder="Detecting identity...">
                 </div>
-                <button class="btn btn-primary btn-lg w-100 fw-bold shadow-sm" 
-                        @click="requestOtp" 
+                <button class="btn btn-primary btn-lg w-100 fw-bold shadow-sm"
+                        @click="requestOtp"
                         :disabled="loading || !form.email">
                     <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
                     {{ loading ? 'Processing...' : 'Verify Identity' }}
@@ -485,22 +524,22 @@
                     <div class="fw-bold text-dark">{{ form.email }}</div>
                 </div>
                 <div class="mb-4">
-                    <input type="text" 
-                           class="form-control form-control-lg text-center fw-bold letter-spacing-lg border-2 shadow-inner bg-light" 
-                           v-model="form.otp" 
-                           maxlength="6" 
+                    <input type="text"
+                           class="form-control form-control-lg text-center fw-bold letter-spacing-lg border-2 shadow-inner bg-light"
+                           v-model="form.otp"
+                           maxlength="6"
                            placeholder="000 000"
                            :disabled="loading"
                            style="font-size: 1.5rem; letter-spacing: 8px;">
                 </div>
-                <button class="btn btn-dark btn-lg w-100 mb-3 fw-bold" 
-                        @click="verifyOtp" 
+                <button class="btn btn-dark btn-lg w-100 mb-3 fw-bold"
+                        @click="verifyOtp"
                         :disabled="loading">
                     <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
                     Confirm OTP
                 </button>
-                <button class="btn btn-link btn-sm text-secondary text-decoration-none" 
-                        @click="step = 1" 
+                <button class="btn btn-link btn-sm text-secondary text-decoration-none"
+                        @click="step = 1"
                         :disabled="loading">Try another email</button>
             </div>
 
@@ -510,26 +549,26 @@
                     <label class="form-label tiny fw-bold text-uppercase tracking-wider text-muted">Full Name</label>
                     <div class="input-group">
                         <span class="input-group-text bg-light border-end-0"><i class="bi bi-person"></i></span>
-                        <input type="text" 
-                               class="form-control bg-light border-start-0 ps-0" 
-                               v-model="form.fullName" 
+                        <input type="text"
+                               class="form-control bg-light border-start-0 ps-0"
+                               v-model="form.fullName"
                                placeholder="Juan Dela Cruz"
                                :disabled="loading">
                     </div>
                 </div>
-                
+
                 <div class="mb-4">
                     <label class="form-label tiny fw-bold text-uppercase tracking-wider text-muted">Password</label>
                     <div class="password-wrapper position-relative">
                         <div class="input-group">
                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-key"></i></span>
-                           <input :type="showPassword ? 'text' : 'password'" 
-                                   class="form-control bg-light border-start-0 ps-0 pe-5" 
-                                   v-model="form.password" 
+                           <input :type="showPassword ? 'text' : 'password'"
+                                   class="form-control bg-light border-start-0 ps-0 pe-5"
+                                   v-model="form.password"
                                    placeholder="Enter password"
                                    :disabled="loading">
                         </div>
-                        <i :class="['bi', showPassword ? 'bi-eye-slash' : 'bi-eye', 'password-toggle-icon-new']" 
+                        <i :class="['bi', showPassword ? 'bi-eye-slash' : 'bi-eye', 'password-toggle-icon-new']"
                            @click="showPassword = !showPassword"></i>
                     </div>
                 </div>
@@ -545,8 +584,8 @@
                     </div>
                 </div>
 
-                <button class="btn btn-primary btn-lg w-100 shadow-sm fw-bold" 
-                        @click="saveUser" 
+                <button class="btn btn-primary btn-lg w-100 shadow-sm fw-bold"
+                        @click="saveUser"
                         :disabled="loading">
                     <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
                     Finalize Registration
@@ -578,18 +617,25 @@
         computed: {
           classification() {
             if (!this.form.email) return "N/A";
-            return this.form.email.toLowerCase().includes("@megaworld-lifestyle.com") ? "ORGANIC" : "NON ORGANIC";
+            return this.form.email
+              .toLowerCase()
+              .includes("@megaworld-lifestyle.com")
+              ? "ORGANIC"
+              : "NON ORGANIC";
           },
         },
         mounted() {
-         
           google.script.run
             .withSuccessHandler((email) => {
               this.$root.isLoading = false;
               if (email) {
                 this.form.email = email;
               } else {
-                this.$root.showCustomAlert("Auth Error", "Could not detect Google Session. Please refresh.", "error");
+                this.$root.showCustomAlert(
+                  "Auth Error",
+                  "Could not detect Google Session. Please refresh.",
+                  "error",
+                );
               }
             })
             .withFailureHandler((err) => {
@@ -609,13 +655,21 @@
               })
               .withFailureHandler((err) => {
                 this.loading = false;
-                this.$root.showCustomAlert("Registration Blocked", err.message, "warning");
+                this.$root.showCustomAlert(
+                  "Registration Blocked",
+                  err.message,
+                  "warning",
+                );
               })
               .sendVerificationCode(this.form.email);
           },
           verifyOtp() {
             if (!this.form.otp || this.form.otp.length < 6) {
-              return this.$root.showCustomAlert("Input Error", "Enter the 6-digit code.", "warning");
+              return this.$root.showCustomAlert(
+                "Input Error",
+                "Enter the 6-digit code.",
+                "warning",
+              );
             }
 
             this.loading = true; // Show verification spinner
@@ -626,13 +680,21 @@
               })
               .withFailureHandler((err) => {
                 this.loading = false;
-                this.$root.showCustomAlert("Invalid Code", err.message, "error");
+                this.$root.showCustomAlert(
+                  "Invalid Code",
+                  err.message,
+                  "error",
+                );
               })
               .verifyRegistrationCode(this.form.email, this.form.otp);
           },
           saveUser() {
             if (!this.form.fullName || !this.form.password) {
-              return this.$root.showCustomAlert("Input Error", "Please fill all profile fields.", "warning");
+              return this.$root.showCustomAlert(
+                "Input Error",
+                "Please fill all profile fields.",
+                "warning",
+              );
             }
 
             this.loading = true;
@@ -648,17 +710,21 @@
               .withFailureHandler((err) => {
                 this.$root.isLoading = false;
                 this.loading = false;
-                this.$root.showCustomAlert("Persistence Error", err.message, "error");
+                this.$root.showCustomAlert(
+                  "Persistence Error",
+                  err.message,
+                  "error",
+                );
               })
               .finalizeRegistration(this.form);
           },
         },
       };
-    const ForgotPasswordView = {
-  template: `
+      const ForgotPasswordView = {
+        template: `
     <div class="auth-container mt-5">
         <div class="card elegant-card border-0 p-4 shadow-lg mx-auto" style="max-width: 450px;">
-            
+
             <!-- HEADER SECTION -->
             <div class="text-center mb-4">
                 <div class="icon-circle mb-3 mx-auto">
@@ -676,20 +742,20 @@
                 <div class="step-line"></div>
                 <div :class="['step-dot', step >= 3 ? 'active' : '']">3</div>
             </div>
-            
+
             <!-- STEP 1: IDENTITY -->
             <div v-if="step === 1" class="animate__animated animate__fadeIn">
                 <label class="form-label tiny fw-bold text-uppercase tracking-wider text-muted">Recovery Email</label>
                 <div class="input-group mb-3">
                     <span class="input-group-text bg-white border-end-0"><i class="bi bi-envelope text-primary"></i></span>
-                    <input type="text" 
-                           class="form-control border-start-0 ps-0 bg-white" 
-                           v-model="email" 
-                           disabled 
+                    <input type="text"
+                           class="form-control border-start-0 ps-0 bg-white"
+                           v-model="email"
+                           disabled
                            placeholder="Detecting identity...">
                 </div>
-                <button class="btn btn-primary btn-lg w-100 fw-bold shadow-sm" 
-                        @click="requestOtp" 
+                <button class="btn btn-primary btn-lg w-100 fw-bold shadow-sm"
+                        @click="requestOtp"
                         :disabled="uiLoading || !email">
                     <span v-if="uiLoading" class="spinner-border spinner-border-sm me-2"></span>
                     {{ uiLoading ? 'Processing...' : 'Send Reset Code' }}
@@ -706,22 +772,22 @@
                     <div class="fw-bold text-dark">{{ email }}</div>
                 </div>
                 <div class="mb-4">
-                    <input type="text" 
-                           class="form-control form-control-lg text-center fw-bold border-2 bg-light" 
-                           v-model="otp" 
-                           maxlength="6" 
+                    <input type="text"
+                           class="form-control form-control-lg text-center fw-bold border-2 bg-light"
+                           v-model="otp"
+                           maxlength="6"
                            placeholder="000 000"
                            :disabled="uiLoading"
                            style="font-size: 1.5rem; letter-spacing: 8px;">
                 </div>
-                <button class="btn btn-dark btn-lg w-100 mb-3 fw-bold" 
-                        @click="verifyOtp" 
+                <button class="btn btn-dark btn-lg w-100 mb-3 fw-bold"
+                        @click="verifyOtp"
                         :disabled="uiLoading || otp.length < 6">
                     <span v-if="uiLoading" class="spinner-border spinner-border-sm me-2"></span>
                     Verify Reset Code
                 </button>
-                <button class="btn btn-link btn-sm text-secondary text-decoration-none" 
-                        @click="step = 1" 
+                <button class="btn btn-link btn-sm text-secondary text-decoration-none"
+                        @click="step = 1"
                         :disabled="uiLoading">Wrong email?</button>
             </div>
 
@@ -732,13 +798,13 @@
                     <div class="password-wrapper position-relative">
                         <div class="input-group">
                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-key"></i></span>
-                           <input :type="showPass ? 'text' : 'password'" 
-                                   class="form-control bg-light border-start-0 ps-0 pe-5" 
-                                   v-model="newPassword" 
+                           <input :type="showPass ? 'text' : 'password'"
+                                   class="form-control bg-light border-start-0 ps-0 pe-5"
+                                   v-model="newPassword"
                                    placeholder="Min. 8 characters"
                                    :disabled="uiLoading">
                         </div>
-                        <i :class="['bi', showPass ? 'bi-eye-slash' : 'bi-eye', 'password-toggle-icon-new']" 
+                        <i :class="['bi', showPass ? 'bi-eye-slash' : 'bi-eye', 'password-toggle-icon-new']"
                            @click="showPass = !showPass"></i>
                     </div>
                 </div>
@@ -748,13 +814,13 @@
                     <div class="password-wrapper position-relative">
                         <div class="input-group">
                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-key-fill"></i></span>
-                           <input :type="showConfirmPass ? 'text' : 'password'" 
-                                   class="form-control bg-light border-start-0 ps-0 pe-5" 
-                                   v-model="confirmPassword" 
+                           <input :type="showConfirmPass ? 'text' : 'password'"
+                                   class="form-control bg-light border-start-0 ps-0 pe-5"
+                                   v-model="confirmPassword"
                                    placeholder="Repeat password"
                                    :disabled="uiLoading">
                         </div>
-                        <i :class="['bi', showConfirmPass ? 'bi-eye-slash' : 'bi-eye', 'password-toggle-icon-new']" 
+                        <i :class="['bi', showConfirmPass ? 'bi-eye-slash' : 'bi-eye', 'password-toggle-icon-new']"
                            @click="showConfirmPass = !showConfirmPass"></i>
                     </div>
                     <div v-if="confirmPassword && newPassword !== confirmPassword" class="text-danger tiny mt-2 fw-bold">
@@ -768,8 +834,8 @@
                    </p>
                 </div>
 
-                <button class="btn btn-primary btn-lg w-100 shadow-sm fw-bold" 
-                        @click="resetSubmit" 
+                <button class="btn btn-primary btn-lg w-100 shadow-sm fw-bold"
+                        @click="resetSubmit"
                         :disabled="!newPassword || newPassword !== confirmPassword || uiLoading">
                     <span v-if="uiLoading" class="spinner-border spinner-border-sm me-2"></span>
                     Update Password
@@ -802,7 +868,9 @@
         },
         methods: {
           fetchIdentity() {
-            google.script.run.withSuccessHandler((email) => (this.email = email)).getActiveUserEmail();
+            google.script.run
+              .withSuccessHandler((email) => (this.email = email))
+              .getActiveUserEmail();
           },
           requestOtp() {
             this.uiLoading = true;
@@ -840,7 +908,11 @@
               .withSuccessHandler((res) => {
                 this.$root.isLoading = false;
                 this.uiLoading = false;
-                this.$root.showCustomAlert("Update Successful", res.message, "success");
+                this.$root.showCustomAlert(
+                  "Update Successful",
+                  res.message,
+                  "success",
+                );
 
                 // DELAYED REDIRECT: Prevents logging in before Sheet cache refreshes
                 setTimeout(() => {
@@ -850,7 +922,11 @@
               .withFailureHandler((err) => {
                 this.$root.isLoading = false;
                 this.uiLoading = false;
-                this.$root.showCustomAlert("Critical Error", err.message, "error");
+                this.$root.showCustomAlert(
+                  "Critical Error",
+                  err.message,
+                  "error",
+                );
               })
               .submitPasswordReset(this.email, this.newPassword);
           },
@@ -860,7 +936,7 @@
       const DashboardView = {
         template: `
             <div class="dashboard-container animation-fade-in">
-                
+
                 <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded shadow-sm border">
                     <div class="d-flex align-items-center">
                         <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center me-3 shadow-sm" style="width: 45px; height: 45px;">
@@ -943,7 +1019,9 @@
           },
           showLogoutConfirm() {
             if (!this.logoutModalInstance) {
-              this.logoutModalInstance = new bootstrap.Modal(document.getElementById("logoutConfirmModal"));
+              this.logoutModalInstance = new bootstrap.Modal(
+                document.getElementById("logoutConfirmModal"),
+              );
             }
             this.logoutModalInstance.show();
           },
@@ -962,14 +1040,34 @@
               this.$root.currentUser = null;
 
               this.$emit("navigate", "login");
-              this.$root.showCustomAlert("Logged Out", "You have successfully ended your session.", "success");
+              this.$root.showCustomAlert(
+                "Logged Out",
+                "You have successfully ended your session.",
+                "success",
+              );
             }, 1000);
           },
         },
       };
 
       const FormRequestView = {
-        template: `
+  template: `
+    <style>
+      /* Border highlighting for errors */
+      .is-invalid, .is-invalid-group {
+        border: 2px solid #dc3545 !important;
+        box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25) !important;
+      }
+      .custom-select-wrapper.is-invalid-wrapper {
+        border: 2px solid #dc3545 !important;
+        border-radius: 6px;
+      }
+      .bg-danger-subtle-border {
+        border: 2px dashed #dc3545 !important;
+        background-color: #fff5f5 !important;
+      }
+    </style>
+
     <div class="form-request-container animation-fade-in" id="printable-area">
         <!-- Dashboard Navigation -->
         <div class="d-print-none mb-4 d-flex justify-content-between">
@@ -985,185 +1083,204 @@
         <div class="card elegant-card card-form border-0 shadow-lg d-print-none">
             <div class="card-body p-4 p-md-5">
                 <h2 class="text-center mb-4">REQUEST FOR PAYMENT</h2>
-                
+
                 <div class="row g-4 mb-4">
+                    <!-- Source File Select -->
+                    <div class="col-12 mb-2">
+                        <label class="form-label fw-bold text-secondary small text-uppercase">Source File <span class="text-danger">*</span></label>
+                        <div class="position-relative shadow-sm custom-select-wrapper" :class="{'is-invalid-wrapper': showErrors && !header.sourceFileName}">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="bi bi-folder2-open text-primary"></i></span>
+                                <input type="text" class="form-control" placeholder="Click to select or type source file..."
+                                    v-model="header.sourceFileName" autocomplete="off"
+                                    @focus="isSourceListOpen = true" @click="isSourceListOpen = true" @input="isSourceListOpen = true">
+                                <button class="btn btn-outline-secondary" type="button" @click="header.sourceFileName = ''; isSourceListOpen = true; selectedSourceObj = null">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                            <ul v-show="isSourceListOpen && filteredSourceFiles.length > 0" 
+                                class="list-group position-absolute w-100 shadow-lg custom-dropdown-menu" style="z-index: 1050; max-height: 250px; overflow-y: auto; margin-top: 2px;">
+                                <li v-for="file in filteredSourceFiles" :key="file.name + file.tabName" 
+                                    class="list-group-item list-group-item-action cursor-pointer d-flex align-items-center justify-content-between" @click="selectSourceFile(file)">
+                                    <div><i class="bi bi-file-earmark-spreadsheet me-2 text-success"></i><strong>{{ file.name }}</strong></div>
+                                    <span class="badge bg-light text-dark border"><i class="bi bi-table me-1"></i>{{ file.tabName }}</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
 
-              <div class="col-12 mb-2">
-    <label class="form-label fw-bold text-secondary small text-uppercase">Source File <span class="text-danger">*</span></label>
-    <div class="position-relative shadow-sm custom-select-wrapper">
-        <div class="input-group">
-            <span class="input-group-text bg-white"><i class="bi bi-folder2-open text-primary"></i></span>
-            <input 
-    type="text" 
-    class="form-control" 
-    placeholder="Click to select or type source file..."
-    v-model="header.sourceFileName"
-    autocomplete="off"
-    @focus="isSourceListOpen = true" 
-    @click="isSourceListOpen = true"
-    @input="isSourceListOpen = true"
->
-            <button 
-                class="btn btn-outline-secondary" 
-                type="button" 
-                @click="header.sourceFileName = ''; isSourceListOpen = true; selectedSourceObj = null"
-            >
-                <i class="bi bi-x"></i>
-            </button>
-        </div>
-
-        <ul v-show="isSourceListOpen && filteredSourceFiles.length > 0" 
-            class="list-group position-absolute w-100 shadow-lg custom-dropdown-menu"
-            style="z-index: 1050; max-height: 250px; overflow-y: auto; margin-top: 2px;">
-            <li 
-                v-for="file in filteredSourceFiles" 
-                :key="file.name + file.tabName"
-                class="list-group-item list-group-item-action cursor-pointer d-flex align-items-center justify-content-between"
-                @click="selectSourceFile(file)"
-            >
-                <div>
-                    <i class="bi bi-file-earmark-spreadsheet me-2 text-success"></i> 
-                    <strong>{{ file.name }}</strong>
-                </div>
-                <span class="badge bg-light text-dark border">
-                    <i class="bi bi-table me-1"></i>{{ file.tabName }}
-                </span>
-            </li>
-        </ul>
-    </div>
-
-    <div class="form-text small text-muted">You must select a source file from the list before searching. If no sourcefile, leave it blank</div>
-</div>
-
+                    <!-- RFP and Search -->
                     <div class="col-md-5">
-                      <label class="form-label fw-bold text-secondary small text-uppercase">RFP NO.</label>
+                      <label class="form-label fw-bold text-secondary small text-uppercase">RFP NO. <span class="text-danger">*</span></label>
                       <div class="input-group shadow-sm">
-                          <input type="text" class="form-control bg-light" v-model="header.rfpNo" placeholder="Input RFP No">
-                          <button class="btn btn-primary" type="button" @click="fetchDataBySearch" :disabled="!header.sourceFileName" title="Search"><i class="bi bi-search"></i></button>
-                          <button class="btn btn-outline-primary" type="button" @click="generateRfp" title="Generate"><i class="bi bi-magic"></i> Generate</button>
+                          <input type="text" class="form-control bg-light" :class="{'is-invalid': showErrors && !header.rfpNo}" v-model="header.rfpNo" placeholder="Input RFP No">
+                          <button class="btn btn-primary" type="button" @click="fetchDataBySearch" :disabled="!header.sourceFileName"><i class="bi bi-search"></i></button>
+                          <button class="btn btn-outline-primary" type="button" @click="generateRfp"><i class="bi bi-magic"></i> Generate</button>
                       </div>
-                  </div>
-
-                  <!-- NEW: INVOICE NO Field -->
-                  <div class="col-md-4">
-                      <label class="form-label fw-bold text-secondary small text-uppercase">Invoice No.</label>
-                      <div class="input-group shadow-sm">
-                          <input type="text" class="form-control bg-light" v-model="header.invoiceNo" placeholder="Input Invoice No">
-                          <button class="btn btn-primary" type="button"  @click="fetchDataBySearch" :disabled="!header.sourceFileName" title="Search"><i class="bi bi-search"></i></button>
-                      </div>
-                  </div>
-
-
-
-
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold text-secondary small text-uppercase">Date</label>
-                        <input type="date" class="form-control form-control-lg bg-light shadow-sm" v-model="header.date" readonly>
                     </div>
+
+                    <div class="col-md-4">
+                      <label class="form-label fw-bold text-secondary small text-uppercase">Invoice No. <span class="text-danger">*</span></label>
+                      <div class="input-group shadow-sm">
+                          <input type="text" class="form-control bg-light" :class="{'is-invalid': showErrors && !header.invoiceNo}" v-model="header.invoiceNo" placeholder="Input Invoice No">
+                          <button class="btn btn-primary" type="button" @click="fetchDataBySearch" :disabled="!header.sourceFileName"><i class="bi bi-search"></i></button>
+                      </div>
+                    </div>
+
                     <div class="col-md-3">
-                        <label class="form-label fw-bold text-secondary small text-uppercase">Due Date</label>
-                        <input type="date" class="form-control form-control-lg bg-light shadow-sm" v-model="header.dueDate" :min="minDueDate">
+                        <label class="form-label fw-bold text-secondary small text-uppercase">Due Date <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control form-control-lg bg-light shadow-sm" :class="{'is-invalid': showErrors && !header.dueDate}" v-model="header.dueDate" :min="minDueDate">
                     </div>
                 </div>
 
+                <!-- PARTICULARS DETAILS GROUPED -->
                 <div class="mt-5" v-if="isSecurityValidated">
-                    <h5 class="fw-bold mb-4 text-primary border-bottom pb-2">PARTICULARS DETAILS</h5>
-                    <div class="row g-3">
-                        <div v-for="field in tableFields" :key="field" class="col-12 col-md-4 col-lg-3">
-                            <label class="form-label small fw-bold text-muted text-uppercase">{{ field.replace(/_/g, ' ') }}</label>
-                            <input v-if="isAmountField(field)" type="text" class="form-control shadow-none border-primary" v-model="particulars[field]" @blur="formatAmount(field)" placeholder="0.00">
-                            <input v-else type="text" class="form-control shadow-none" v-model="particulars[field]" :placeholder="'Enter ' + field.toLowerCase()">
+                    <h5 class="fw-bold mb-4 text-primary border-bottom pb-2"><i class="bi bi-info-circle-fill me-2"></i> PARTICULARS DETAILS</h5>
+                    
+                    <div class="row g-4">
+                        <!-- Group 1: Entities -->
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded bg-white shadow-sm h-100">
+                                <p class="small fw-bold text-primary text-uppercase mb-3 border-bottom">Property Information</p>
+                                <div class="row g-2">
+                                    <div class="col-12">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Payor Name <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" :class="{'is-invalid': showErrors && !particulars['PAYOR NAME']}" v-model="particulars['PAYOR NAME']">
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Payee Name <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" :class="{'is-invalid': showErrors && !particulars['PAYEE NAME']}" v-model="particulars['PAYEE NAME']">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Property <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" :class="{'is-invalid': showErrors && !particulars['PROPERTY']}" v-model="particulars['PROPERTY']">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Location <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" :class="{'is-invalid': showErrors && !particulars['LOCATION']}" v-model="particulars['LOCATION']">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Group 2: Financials -->
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded bg-light shadow-sm h-100">
+                                <p class="small fw-bold text-primary text-uppercase mb-3 border-bottom">Financials & Status</p>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Contract Amount <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control fw-bold border-primary" 
+                                               :class="{'is-invalid': showErrors && !particulars['CONTRACT AMOUNT']}" v-model="particulars['CONTRACT AMOUNT']" 
+                                               @input="restrictToNumbers('CONTRACT AMOUNT')" @blur="formatAmount('CONTRACT AMOUNT')" placeholder="0.00">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">SOA Amount <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control fw-bold border-primary" 
+                                               :class="{'is-invalid': showErrors && !particulars['SOA AMOUNT']}" v-model="particulars['SOA AMOUNT']" 
+                                               @input="restrictToNumbers('SOA AMOUNT')" @blur="formatAmount('SOA AMOUNT')" placeholder="0.00">
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">General Status <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" :class="{'is-invalid': showErrors && !particulars['GENERAL STATUS']}" v-model="particulars['GENERAL STATUS']">
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Sector <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" :class="{'is-invalid': showErrors && !particulars['SECTOR']}" v-model="particulars['SECTOR']">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Group 3: Details -->
+                        <div class="col-12">
+                            <div class="p-3 border rounded bg-white shadow-sm">
+                                <p class="small fw-bold text-primary text-uppercase mb-3 border-bottom">Billing & Service Period</p>
+                                <div class="row g-3">
+                                    <div class="col-md-2">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Year <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control text-center" :class="{'is-invalid': showErrors && !particulars['YEAR']}" v-model="particulars['YEAR']" maxlength="4">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Month <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control text-center" :class="{'is-invalid': showErrors && !particulars['MONTH']}" v-model="particulars['MONTH']">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Billing Period <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" :class="{'is-invalid': showErrors && !particulars['BILLING PERIOD']}" v-model="particulars['BILLING PERIOD']">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Contract No. <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" :class="{'is-invalid': showErrors && !particulars['CONTRACT NO']}" v-model="particulars['CONTRACT NO']">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Service Kind <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" :class="{'is-invalid': showErrors && !particulars['KINDS OF SERVICE']}" v-model="particulars['KINDS OF SERVICE']">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <!-- File Upload Section -->
-                    <div class="mt-5 p-4 border-2 border-dashed rounded bg-light">
-                        <label class="form-label fw-bold d-block mb-3"><i class="bi bi-paperclip text-primary me-2"></i> Upload PRF (PDF - Max 15MB)</label>
-                        <input type="file" class="form-control" @change="handleFileChange" ref="fileInput" accept=".pdf">
+                    <div class="mt-5 p-4 border-2 border-dashed rounded" :class="{'bg-danger-subtle-border': showErrors && !attachment.base64, 'bg-light': !(showErrors && !attachment.base64)}">
+                        <label class="form-label fw-bold d-block mb-3"><i class="bi bi-paperclip text-primary me-2"></i> Upload PRF (PDF) <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control" :class="{'is-invalid': showErrors && !attachment.base64}" @change="handleFileChange" ref="fileInput" accept=".pdf">
                     </div>
 
-                    <!-- Participants Section -->
-<div class="mt-4 p-4 border rounded bg-white shadow-sm">
-    <label class="form-label fw-bold text-primary small text-uppercase">
-        <i class="bi bi-envelope-at-fill me-2"></i> Transaction Participants
-    </label>
-    
-    <div class="row g-3">
-        <!-- PRIMARY RECIPIENT -->
-        <div class="col-md-5">
-            <label class="form-label small fw-bold text-muted">Primary Recipient <span class="text-danger">*</span></label>
-            <div class="position-relative custom-select-wrapper primary-email-wrapper">
-                <div class="input-group shadow-sm">
-                    <span class="input-group-text bg-white"><i class="bi bi-person-check text-primary"></i></span>
-                    <input type="email" class="form-control" v-model="header.primaryEmail" 
-                           @focus="isPrimaryListOpen = true"
-                           placeholder="Search or type email...">
-                </div>
-                <!-- Custom Dropdown -->
-                <ul v-show="isPrimaryListOpen && filteredPrimarySuggestions.length" 
-                    class="list-group position-absolute w-100 shadow-lg custom-dropdown-menu"
-                    style="z-index: 1070; max-height: 200px; overflow-y: auto; margin-top: 2px;">
-                    <li v-for="email in filteredPrimarySuggestions" :key="email"
-                        class="list-group-item list-group-item-action cursor-pointer small d-flex align-items-center"
-                        @click="selectPrimaryEmail(email)">
-                        <i class="bi bi-envelope me-2 text-secondary"></i> {{ email }}
-                    </li>
-                </ul>
-            </div>
-        </div>
+                    <!-- Participants -->
+                    <div class="mt-4 p-4 border rounded bg-white shadow-sm">
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <label class="form-label small fw-bold text-muted">Primary Recipient <span class="text-danger">*</span></label>
+                                <div class="position-relative primary-email-wrapper">
+                                    <div class="input-group shadow-sm">
+                                        <span class="input-group-text bg-white"><i class="bi bi-person-check text-primary"></i></span>
+                                        <input type="email" class="form-control" :class="{'is-invalid': showErrors && !header.primaryEmail}" 
+                                            v-model="header.primaryEmail" @focus="isPrimaryListOpen = true" placeholder="Recipient email...">
+                                    </div>
+                                    <ul v-show="isPrimaryListOpen && filteredPrimarySuggestions.length" class="list-group position-absolute w-100 shadow-lg custom-dropdown-menu" style="z-index: 1080; max-height: 200px; overflow-y: auto; margin-top: 2px;">
+                                        <li v-for="email in filteredPrimarySuggestions" :key="email" @mousedown="selectPrimaryEmail(email)" class="list-group-item list-group-item-action cursor-pointer small">{{ email }}</li>
+                                    </ul>
+                                </div>
+                            </div>
 
-        <!-- SECONDARY RECIPIENTS -->
-        <div class="col-md-7">
-            <label class="form-label small fw-bold text-muted">Secondary Recipients (Separated by comma)</label>
-            <div class="position-relative custom-select-wrapper secondary-email-wrapper">
-                <div class="input-group shadow-sm">
-                    <span class="input-group-text bg-white"><i class="bi bi-people text-primary"></i></span>
-                    <input type="text" class="form-control" v-model="header.secondaryEmails" 
-                           @focus="handleSecondaryFocus"
-                           @input="updateSecondaryQuery"
-                           placeholder="email1@me.com, email2@me.com...">
-                </div>
-                <!-- Custom Dropdown -->
-                <ul v-show="isSecondaryListOpen && filteredSecondarySuggestions.length" 
-                    class="list-group position-absolute w-100 shadow-lg custom-dropdown-menu"
-                    style="z-index: 1070; max-height: 200px; overflow-y: auto; margin-top: 2px;">
-                    <li v-for="email in filteredSecondarySuggestions" :key="email"
-                        class="list-group-item list-group-item-action cursor-pointer small d-flex align-items-center"
-                        @click="selectSecondaryEmail(email)">
-                        <i class="bi bi-envelope-plus me-2 text-success"></i> {{ email }}
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </div>
-</div>
-
+                            <div class="col-md-7">
+                                <label class="form-label small fw-bold text-muted">Secondary Recipients (Comma separated)</label>
+                                <div class="position-relative secondary-email-wrapper">
+                                    <div class="input-group shadow-sm">
+                                        <span class="input-group-text bg-white"><i class="bi bi-people text-primary"></i></span>
+                                        <input type="text" class="form-control" v-model="header.secondaryEmails" @focus="handleSecondaryFocus" @input="updateSecondaryQuery" placeholder="Email1, Email2...">
+                                    </div>
+                                    <ul v-show="isSecondaryListOpen && filteredSecondarySuggestions.length" class="list-group position-absolute w-100 shadow-lg custom-dropdown-menu" style="z-index: 1080; max-height: 200px; overflow-y: auto; margin-top: 2px;">
+                                        <li v-for="email in filteredSecondarySuggestions" :key="email" @mousedown="selectSecondaryEmail(email)" class="list-group-item list-group-item-action cursor-pointer small"><i class="bi bi-envelope-plus text-success me-2"></i>{{ email }}</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="d-flex justify-content-end mt-5 gap-3">
-                        <button class="btn btn-light border px-4" @click="resetFormAfterSubmission">Clear</button>
-                        <button class="btn btn-primary px-5 fw-bold shadow" @click="submitForm" :disabled="isSubmitting">
-                            <i class="bi bi-send-fill me-2"></i> SUBMIT REQUEST
-                        </button>
+                        <button class="btn btn-light border px-4" @click="resetForm">Clear</button>
+                        <button class="btn btn-primary px-5 fw-bold shadow" @click="submitForm" :disabled="isSubmitting">SUBMIT REQUEST</button>
                     </div>
                 </div>
 
-                <!-- Locked State UI -->
                 <div v-else class="text-center py-5 border rounded bg-light mt-5">
-                    <i class="bi bi-shield-lock fs-1 text-muted mb-3 d-block"></i>
-                    <p class="text-muted">Select Source File, Input RFP and set valid Due Date.</p>
+                    <p class="text-muted">Select Source, RFP No, and Due Date to begin.</p>
                 </div>
             </div>
         </div>
 
-        <!-- PRINTABLE CONTENT -->
-<div class="d-none d-print-block printable-content" style="padding: 0.4in; color: #000;">
+       <!-- PRINTABLE CONTENT -->
+<div class="d-none d-print-block printable-content" style="padding: 0.4in; color: #000; font-family: 'Arial', sans-serif;">
     <div class="print-logo"></div>
     <div class="text-center" style="margin-bottom: 25px;">
         <h1 style="font-size: 18pt; font-weight: bold; border-bottom: 3px solid #000; padding-bottom: 10px; margin-top: 0;">REQUEST FOR PAYMENT</h1>
     </div>
 
     <!-- Top Metadata Table (RFP NO, DATE, DUE DATE) -->
-    <table class="meta-table">
+    <table class="meta-table" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
         <tr>
             <td style="width: 45%;">
                 <div style="font-size: 8pt; color: #555; text-transform: uppercase; font-weight: bold;">RFP Number</div>
@@ -1180,95 +1297,56 @@
         </tr>
     </table>
 
-    <!-- The Restricted Width Grid -->
-    <table class="particulars-grid">
+    <!-- The Restricted Width Grid (Matches your high-quality previous design) -->
+    <table class="particulars-grid" style="width: 100%; border: 1px solid #000; border-collapse: collapse;">
         <tr v-for="(row, i) in Math.ceil(tableFields.length / 3)" :key="i">
-            <!-- 
-                 The height is set to 'auto' to expand downward.
-                 The CSS handles the width locking and text wrapping.
-            -->
             <td v-for="(field, j) in tableFields.slice(i * 3, i * 3 + 3)" 
                 :key="field" 
-                class="grid-cell">
+                class="grid-cell" 
+                style="border: 1px solid #000; padding: 8px; width: 33.33%; vertical-align: top;">
                 <div style="font-size: 7pt; color: #333; text-transform: uppercase; margin-bottom: 4px; font-weight: bold;">{{ field.replace(/_/g, ' ') }}</div>
-                <div style="font-size: 9.5pt; font-weight: bold; line-height: 1.4;">{{ particulars[field] || '—' }}</div>
+                <div style="font-size: 9.5pt; font-weight: bold; line-height: 1.2;">{{ particulars[field] || '—' }}</div>
             </td>
             
-            <!-- Filler Columns for alignment -->
+            <!-- Filler Columns for alignment if row is incomplete -->
             <td v-for="empty in (3 - tableFields.slice(i * 3, i * 3 + 3).length)" 
                 :key="'e-'+empty" 
-                class="grid-cell" style="border: 1px solid #000 !important;"></td>
+                class="grid-cell" style="border: 1px solid #000 !important; width: 33.33%;"></td>
         </tr>
     </table>
 
     <!-- Notes Section (5 Fixed Lines) -->
     <div style="margin-top: 30px;">
         <div style="font-size: 9pt; font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">NOTES / REMARKS:</div>
-        <div v-for="n in 5" :key="'ln-'+n" class="note-line"></div>
+        <div v-for="n in 5" :key="'ln-'+n" class="note-line" style="border-bottom: 1px solid #ccc; height: 25px; margin-bottom: 5px;"></div>
     </div>
 
     <!-- Signature Signatories -->
     <div style="margin-top: 60px;">
-        <table style="width: 100%; border: none !important;">
+        <table style="width: 100%; border: none !important; border-collapse: collapse;">
             <tr>
-                <td v-for="label in ['Requested By', 'Verified By', 'Approved By']" :key="label" style="border: none !important; width: 33%;">
-                    <div style="height: 50px;"></div>
-                    <div class="sig-name-line">{{ label }}</div>
+                <td v-for="label in ['Requested By', 'Verified By', 'Approved By']" :key="label" style="border: none !important; width: 33.33%; padding: 0 15px;">
+                    <div style="height: 40px; border-bottom: 2px solid #000;"></div>
+                    <div class="sig-name-line" style="text-align: center; font-size: 9pt; font-weight: bold; text-transform: uppercase; margin-top: 5px;">{{ label }}</div>
                 </td>
             </tr>
         </table>
     </div>
 </div>
     </div>
-    <!-- Multi-Result Selection Modal -->
-<div v-if="isSearchModalOpen" class="modal fade show d-block" style="background: rgba(0,0,0,0.5);">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content shadow-lg border-0">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="bi bi-card-list me-2"></i> Multiple Matches Found</h5>
-                <button type="button" class="btn-close btn-close-white" @click="isSearchModalOpen = false"></button>
-            </div>
-            <div class="modal-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>RFP No.</th>
-                                <th>Invoice No.</th>
-                                <th>Payee</th>
-                                <th>Property</th>
-                                <th>Amount</th>
-                                <th class="text-end">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="(res, index) in searchResults" :key="index">
-                                <td class="fw-bold">{{ res['RFP|PEF NO.'] }}</td>
-                                <td>{{ res['INVOICE NO.'] }}</td>
-                                <td class="small">{{ res['PAYEE NAME'] }}</td>
-                                <td class="small">{{ res['PROPERTY'] }}</td>
-                                <td class="text-primary fw-bold">{{ res['SOA AMOUNT'] }}</td>
-                                <td class="text-end">
-                                    <button class="btn btn-sm btn-outline-primary px-3" @click="selectSearchResult(res)">
-                                        Select
-                                    </button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="modal-footer border-top-0">
-                <p class="me-auto text-muted small">Showing {{ searchResults.length }} records from the selected file.</p>
-                <button type="button" class="btn btn-secondary" @click="isSearchModalOpen = false">Close</button>
-            </div>
-        </div>
+
+    <!-- Search Result Modal (Existing) -->
+    <div v-if="isSearchModalOpen" class="modal fade show d-block" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-xl modal-dialog-centered"><div class="modal-content"><div class="modal-header bg-primary text-white">Matches Found</div><div class="modal-body p-0">
+        <table class="table table-hover mb-0"><thead><tr><th>RFP</th><th>Payee</th><th>Amount</th><th>Action</th></tr></thead>
+        <tbody><tr v-for="res in searchResults" :key="res['RFP|PEF NO.']"><td>{{ res['RFP|PEF NO.'] }}</td><td>{{ res['PAYEE NAME'] }}</td><td>{{ res['SOA AMOUNT'] }}</td><td><button @click="selectSearchResult(res)" class="btn btn-sm btn-primary">Select</button></td></tr></tbody></table>
+        </div></div></div>
     </div>
-</div>
   `,
 
         data() {
           return {
+            showErrors: false,
             // 1. FORM HEADER DATA (Payload for Submission)
             header: {
               rfpNo: "",
@@ -1328,18 +1406,24 @@
           filteredPrimarySuggestions() {
             const query = (this.header.primaryEmail || "").toLowerCase();
             if (!query) return this.suggestedEmails; // Show all on first click
-            return this.suggestedEmails.filter((e) => e.toLowerCase().includes(query));
+            return this.suggestedEmails.filter((e) =>
+              e.toLowerCase().includes(query),
+            );
           },
 
           // Filtered Secondary list based on what is after the last comma
           filteredSecondarySuggestions() {
             const query = (this.secondaryQuery || "").trim().toLowerCase();
             // Prevent showing emails already added in the string
-            const currentContent = (this.header.secondaryEmails || "").toLowerCase();
+            const currentContent = (
+              this.header.secondaryEmails || ""
+            ).toLowerCase();
 
             const available = this.suggestedEmails.filter((email) => {
               const isMatch = email.toLowerCase().includes(query);
-              const isNotDuplicate = !currentContent.includes(email.toLowerCase() + ",");
+              const isNotDuplicate = !currentContent.includes(
+                email.toLowerCase() + ",",
+              );
               return isMatch && isNotDuplicate;
             });
 
@@ -1348,7 +1432,9 @@
 
           filteredSourceFiles() {
             const files = this.sourceFiles || [];
-            const search = (this.header.sourceFileName || "").toLowerCase().trim();
+            const search = (this.header.sourceFileName || "")
+              .toLowerCase()
+              .trim();
 
             // If the list is open and nothing is typed, or the list was JUST opened
             // we return all files.
@@ -1365,7 +1451,11 @@
 
             // UX FIX: If search matches exactly one item (the selected one),
             // but the user just clicked it, show ALL files so they can switch.
-            if (results.length === 1 && results[0].name === this.header.sourceFileName && this.isSourceListOpen) {
+            if (
+              results.length === 1 &&
+              results[0].name === this.header.sourceFileName &&
+              this.isSourceListOpen
+            ) {
               return files;
             }
 
@@ -1375,15 +1465,14 @@
             return new Date().toISOString().split("T")[0];
           },
           isSecurityValidated() {
-         
-            const hasInvoice = !!(this.header.invoiceNo?.trim());
-  
+            const hasInvoice = !!this.header.invoiceNo?.trim();
+
             // Optional: Only validate due date if the user has manually changed it
             if (!this.header.dueDate) return true;
             const sel = new Date(this.header.dueDate).setHours(0, 0, 0, 0);
             const today = new Date().setHours(0, 0, 0, 0);
             return sel >= today;
-        },
+          },
         },
         mounted() {
           this.fetchSuggestedEmails();
@@ -1406,6 +1495,20 @@
         },
 
         methods: {
+
+             restrictToNumbers(field) {
+        let val = this.particulars[field];
+        // Remove everything except numbers and a single decimal point
+        val = val.replace(/[^0-9.]/g, '');
+        
+        // Prevent multiple decimal points (e.g., 10.5.2 -> 10.52)
+        const parts = val.split('.');
+        if (parts.length > 2) {
+            val = parts[0] + '.' + parts.slice(1).join('');
+        }
+        
+        this.particulars[field] = val;
+    },
           // PRIMARY LOGIC
           selectPrimaryEmail(email) {
             this.header.primaryEmail = email;
@@ -1437,13 +1540,17 @@
 
           fetchDataBySearch() {
             if (!this.header.sourceFileName) {
-              return this.$root.showCustomAlert("Warning", "Please select a Source File first.", "warning");
+              return this.$root.showCustomAlert(
+                "Warning",
+                "Please select a Source File first.",
+                "warning",
+              );
             }
             if (!this.header.rfpNo && !this.header.invoiceNo) {
               return this.$root.showCustomAlert(
                 "Input Needed",
                 "Please provide either an RFP No. or Invoice No.",
-                "warning"
+                "warning",
               );
             }
 
@@ -1455,7 +1562,11 @@
 
                 if (res.status === "ALREADY_PAID") {
                   this.initParticulars();
-                  return this.$root.showCustomAlert("Action Blocked", res.message, "warning");
+                  return this.$root.showCustomAlert(
+                    "Action Blocked",
+                    res.message,
+                    "warning",
+                  );
                 }
 
                 if (res.status === "FOUND") {
@@ -1467,29 +1578,41 @@
                     this.searchResults = matches;
                     this.isSearchModalOpen = true;
                   } else {
-                    this.$root.showCustomAlert("Not Found", "No matching records in the selected file.", "info");
+                    this.$root.showCustomAlert(
+                      "Not Found",
+                      "No matching records in the selected file.",
+                      "info",
+                    );
                   }
                 }
               })
               .withFailureHandler((err) => {
                 this.$root.isLoading = false;
-                this.$root.showCustomAlert("System Error", err.message, "error");
+                this.$root.showCustomAlert(
+                  "System Error",
+                  err.message,
+                  "error",
+                );
               })
-              .getRfpDataAdvanced(this.header.sourceFileName, this.header.rfpNo, this.header.invoiceNo);
+              .getRfpDataAdvanced(
+                this.header.sourceFileName,
+                this.header.rfpNo,
+                this.header.invoiceNo,
+              );
           },
 
           selectSourceFile(file) {
-  // Sets visible name for the input box
-  this.header.sourceFileName = file.name;
-  
-  // CRITICAL: Set the Tab Name and File URL to the header object
-  this.header.sourceTabName = file.tabName;
-  this.header.sourceFileUrl = file.url; 
-  
-  this.selectedSourceObj = file;
-  this.isSourceListOpen = false;
-  console.log("Selected URL:", this.header.sourceFileUrl);
-},
+            // Sets visible name for the input box
+            this.header.sourceFileName = file.name;
+
+            // CRITICAL: Set the Tab Name and File URL to the header object
+            this.header.sourceTabName = file.tabName;
+            this.header.sourceFileUrl = file.url;
+
+            this.selectedSourceObj = file;
+            this.isSourceListOpen = false;
+            console.log("Selected URL:", this.header.sourceFileUrl);
+          },
           selectSearchResult(record) {
             this.populateForm(record);
             this.isSearchModalOpen = false;
@@ -1503,20 +1626,28 @@
 
             // 2. Capture Source Metadata
             // Prioritize metadata returned from the server-side search results
-            this.header.sourceFileUrl = raw["META_SOURCE_URL"] || this.selectedSourceObj?.url || "N/A";
+            this.header.sourceFileUrl =
+              raw["META_SOURCE_URL"] || this.selectedSourceObj?.url || "N/A";
 
             // Update Tab Name: Check for meta tag first, then selected object, then fallback
-            this.header.sourceTabName = raw["META_TAB_NAME"] || this.selectedSourceObj?.tabName || "MANUAL_ENTRY";
+            this.header.sourceTabName =
+              raw["META_TAB_NAME"] ||
+              this.selectedSourceObj?.tabName ||
+              "MANUAL_ENTRY";
 
             // Update the visible filename in the UI if not already set
             if (!this.header.sourceFileName && this.selectedSourceObj) {
-              this.header.sourceFileName = this.selectedSourceObj.fileName || this.selectedSourceObj.name;
+              this.header.sourceFileName =
+                this.selectedSourceObj.fileName || this.selectedSourceObj.name;
             }
 
             // 3. Format and map Particulars
             const formattedData = {};
             this.tableFields.forEach((field) => {
-              let val = raw[field] !== undefined && raw[field] !== null ? raw[field] : "";
+              let val =
+                raw[field] !== undefined && raw[field] !== null
+                  ? raw[field]
+                  : "";
 
               // Securely parse and format currency/amount fields
               if (this.isAmountField(field) && val !== "") {
@@ -1536,25 +1667,32 @@
             this.particulars = formattedData;
 
             // UI Feedback
-            if (this.$root && typeof this.$root.showCustomAlert === "function") {
-              this.$root.showCustomAlert("Success", "Record loaded successfully.", "success");
+            if (
+              this.$root &&
+              typeof this.$root.showCustomAlert === "function"
+            ) {
+              this.$root.showCustomAlert(
+                "Success",
+                "Record loaded successfully.",
+                "success",
+              );
             }
           },
           fetchSourceFiles() {
-  google.script.run
-    .withSuccessHandler((data) => {
-      this.sourceFiles = (data || []).map((item) => ({
-        name: item.fileName || "",
-        tabName: item.tabName || "",
-        url: item.fileUrl || "", // Make sure URL is mapped here
-        displayName: `${item.fileName} [${item.tabName}]`,
-      }));
-    })
-    .withFailureHandler((err) => {
-      console.error("Fetch Error:", err);
-    })
-    .getSourceFileNames();
-},
+            google.script.run
+              .withSuccessHandler((data) => {
+                this.sourceFiles = (data || []).map((item) => ({
+                  name: item.fileName || "",
+                  tabName: item.tabName || "",
+                  url: item.fileUrl || "", // Make sure URL is mapped here
+                  displayName: `${item.fileName} [${item.tabName}]`,
+                }));
+              })
+              .withFailureHandler((err) => {
+                console.error("Fetch Error:", err);
+              })
+              .getSourceFileNames();
+          },
           isAmountField(field) {
             const amountFields = ["CONTRACT AMOUNT", "SOA AMOUNT"];
             return amountFields.includes(field.toUpperCase());
@@ -1583,11 +1721,16 @@
                 this.$root.isLoading = false;
                 this.header.rfpNo = id;
                 this.initParticulars();
-                if (!this.header.dueDate) this.header.dueDate = new Date().toISOString().split("T")[0];
+                if (!this.header.dueDate)
+                  this.header.dueDate = new Date().toISOString().split("T")[0];
               })
               .withFailureHandler((err) => {
                 this.$root.isLoading = false;
-                this.$root.showCustomAlert("Error", "Generation failed: " + err, "error");
+                this.$root.showCustomAlert(
+                  "Error",
+                  "Generation failed: " + err,
+                  "error",
+                );
               })
               .generateRfpNumber();
           },
@@ -1597,7 +1740,10 @@
           },
           formatAmount(field) {
             if (!this.isAmountField(field)) return;
-            let val = String(this.particulars[field] || "").replace(/[^0-9.]/g, "");
+            let val = String(this.particulars[field] || "").replace(
+              /[^0-9.]/g,
+              "",
+            );
             const num = parseFloat(val);
             if (isNaN(num)) {
               this.particulars[field] = "";
@@ -1629,54 +1775,93 @@
           },
 
           submitForm() {
+            this.showErrors = true;
 
-            const hasRfp = !!(this.header.rfpNo?.trim());
-            const hasInvoice = !!(this.header.invoiceNo?.trim());
+            const hasRfp = !!this.header.rfpNo?.trim();
+            const hasInvoice = !!this.header.invoiceNo?.trim();
 
             // 1. Basic Header Validation
-            if (!this.header.rfpNo) return this.$root.showCustomAlert("Error", "RFP Number is missing.", "warning");
-            if (!this.header.dueDate) return this.$root.showCustomAlert("Error", "Due Date is required.", "warning");
+            if (!this.header.rfpNo)
+              return this.$root.showCustomAlert(
+                "Error",
+                "RFP Number is missing.",
+                "warning",
+              );
+            if (!this.header.dueDate)
+              return this.$root.showCustomAlert(
+                "Error",
+                "Due Date is required.",
+                "warning",
+              );
 
             // NEW: Ensure Source and Tab are actually selected for the payload
             if (!this.header.sourceFileName) {
-                this.header.sourceFileName = "MANUAL_ENTRY";
-                this.header.sourceTabName = "N/A";
-                this.header.sourceFileUrl = "N/A";
+              this.header.sourceFileName = "MANUAL_ENTRY";
+              this.header.sourceTabName = "N/A";
+              this.header.sourceFileUrl = "N/A";
             }
             // 1. Mandatory Identifier Check
-              if (!hasInvoice) {
-                  return this.$root.showCustomAlert("Error", "Invoice Number is required.", "warning");
-              }
-              
-              // Specific logic: if RFP has value, invoice must not be empty 
-              // (This is already covered by !hasInvoice, but let's be explicit if you want)
-              if (hasRfp && !hasInvoice) {
-                  return this.$root.showCustomAlert("Error", "Invoice Number must be provided alongside RFP.", "warning");
-              }
+            if (!hasInvoice) {
+              return this.$root.showCustomAlert(
+                "Error",
+                "Invoice Number is required.",
+                "warning",
+              );
+            }
+
+            // Specific logic: if RFP has value, invoice must not be empty
+            // (This is already covered by !hasInvoice, but let's be explicit if you want)
+            if (hasRfp && !hasInvoice) {
+              return this.$root.showCustomAlert(
+                "Error",
+                "Invoice Number must be provided alongside RFP.",
+                "warning",
+              );
+            }
 
             // 2. Security/Date Validation
             if (!this.isSecurityValidated)
-              return this.$root.showCustomAlert("Error", "Invalid or Past Due Date.", "error");
+              return this.$root.showCustomAlert(
+                "Error",
+                "Invalid or Past Due Date.",
+                "error",
+              );
 
             // 3. Particulars Validation
-            const missingFields = this.tableFields.filter((f) => !String(this.particulars[f] || "").trim());
+            const missingFields = this.tableFields.filter(
+              (f) => !String(this.particulars[f] || "").trim(),
+            );
             if (missingFields.length > 0) {
-              return this.$root.showCustomAlert("Missing Data", "Please fill all particulars fields.", "warning");
+              return this.$root.showCustomAlert(
+                "Missing Data",
+                "Please fill all particulars fields.",
+                "warning",
+              );
             }
 
             // 4. File Attachment Validation
             if (!this.attachment.base64) {
-              return this.$root.showCustomAlert("File Missing", "Please upload the PRF document.", "warning");
+              return this.$root.showCustomAlert(
+                "File Missing",
+                "Please upload the PRF document.",
+                "warning",
+              );
             }
 
             // 5. Participants Formatting
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             const primaryClean = (this.header.primaryEmail || "").trim();
             if (!emailRegex.test(primaryClean)) {
-              return this.$root.showCustomAlert("Required", "Invalid Primary Email.", "warning");
+              return this.$root.showCustomAlert(
+                "Required",
+                "Invalid Primary Email.",
+                "warning",
+              );
             }
 
-            const formattedParticipants = [{ email: primaryClean.toLowerCase(), tag: "Primary" }];
+            const formattedParticipants = [
+              { email: primaryClean.toLowerCase(), tag: "Primary" },
+            ];
             const secondaryRaw = (this.header.secondaryEmails || "").trim();
             if (secondaryRaw) {
               secondaryRaw
@@ -1685,7 +1870,10 @@
                 .filter((e) => e !== "")
                 .forEach((email) => {
                   if (emailRegex.test(email)) {
-                    formattedParticipants.push({ email: email.toLowerCase(), tag: "Secondary" });
+                    formattedParticipants.push({
+                      email: email.toLowerCase(),
+                      tag: "Secondary",
+                    });
                   }
                 });
             }
@@ -1704,10 +1892,17 @@
               .withSuccessHandler((res) => {
                 this.isSubmitting = false;
                 if (res.success) {
-                  this.$root.showCustomAlert(res.message, "Recorded successfully!");
-                   this.resetForm(); 
+                  this.$root.showCustomAlert(
+                    res.message,
+                    "Recorded successfully!",
+                  );
+                  this.resetForm();
                 } else {
-                  this.$root.showCustomAlert("Submission Failed", res.message, "danger");
+                  this.$root.showCustomAlert(
+                    "Submission Failed",
+                    res.message,
+                    "danger",
+                  );
                 }
               })
               .withFailureHandler((err) => {
@@ -1718,47 +1913,48 @@
           },
 
           resetForm() {
-    // 1. Reset Header Object
-    this.header = {
-        rfpNo: "",
-        invoiceNo: "",
-        date: new Date().toISOString().split("T")[0], // Keep today's date
-        dueDate: "",
-        sourceFileName: "", 
-        sourceTabName: "", 
-        sourceFileUrl: "",
-        primaryEmail: "",
-        secondaryEmails: ""
-    };
+            this.showErrors = false;
+            // 1. Reset Header Object
+            this.header = {
+              rfpNo: "",
+              invoiceNo: "",
+              date: new Date().toISOString().split("T")[0], // Keep today's date
+              dueDate: "",
+              sourceFileName: "",
+              sourceTabName: "",
+              sourceFileUrl: "",
+              primaryEmail: "",
+              secondaryEmails: "",
+            };
 
-    // 2. Clear Particulars (the table details)
-    this.initParticulars();
+            // 2. Clear Particulars (the table details)
+            this.initParticulars();
 
-    // 3. Clear Attachment Object
-    this.attachment = {
-        name: "",
-        type: "",
-        size: 0,
-        base64: ""
-    };
+            // 3. Clear Attachment Object
+            this.attachment = {
+              name: "",
+              type: "",
+              size: 0,
+              base64: "",
+            };
 
-    // 4. CRITICAL: Clear the physical file input from the browser
-    if (this.$refs.fileInput) {
-        this.$refs.fileInput.value = "";
-    }
+            // 4. CRITICAL: Clear the physical file input from the browser
+            if (this.$refs.fileInput) {
+              this.$refs.fileInput.value = "";
+            }
 
-    // 5. Reset UI states
-    this.isSubmitting = false;
-    this.isSourceListOpen = false;
-    this.isPrimaryListOpen = false;
-    this.isSearchModalOpen = false;
-    
-    // Optional: Refresh suggestions if they were cleared
-    // this.fetchSourceFiles(); 
-    // this.fetchSuggestedEmails();
+            // 5. Reset UI states
+            this.isSubmitting = false;
+            this.isSourceListOpen = false;
+            this.isPrimaryListOpen = false;
+            this.isSearchModalOpen = false;
 
-    console.log("All form fields have been cleared.");
-},
+            // Optional: Refresh suggestions if they were cleared
+            // this.fetchSourceFiles();
+            // this.fetchSuggestedEmails();
+
+            console.log("All form fields have been cleared.");
+          },
           executeSubmission() {
             this.isSubmitting = true;
             this.$root.triggerLoading("Submitting Request...", 0);
@@ -1789,7 +1985,11 @@
                 this.isSubmitting = false;
                 this.$root.isLoading = false;
                 if (res.success) {
-                  this.$root.showCustomAlert("Success", "RFP recorded successfully.", "success");
+                  this.$root.showCustomAlert(
+                    "Success",
+                    "RFP recorded successfully.",
+                    "success",
+                  );
                   this.resetFormAfterSubmission();
                 } else {
                   this.$root.showCustomAlert("Error", res.message, "error");
@@ -1798,6 +1998,7 @@
               .processSubmission(payload);
           },
           resetFormAfterSubmission() {
+            this.showErrors = false;
             this.header.rfpNo = "";
             this.header.invoiceNo = ""; // Reset this too
             this.header.dueDate = "";
@@ -1879,7 +2080,9 @@
             this.alertMessage = message;
             this.alertType = type;
             if (!this.alertModalInstance)
-              this.alertModalInstance = new bootstrap.Modal(document.getElementById("customAlertModal"));
+              this.alertModalInstance = new bootstrap.Modal(
+                document.getElementById("customAlertModal"),
+              );
             this.alertModalInstance.show();
           },
         },
