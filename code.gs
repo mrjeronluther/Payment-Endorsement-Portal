@@ -1,3 +1,30 @@
+
+const SECURITY_PEPPER = "v9_PEF_SYS_2026_!@#"; 
+
+/**
+ * Modern 2026 Secure Hash
+ * Uses HmacSha256 + Salt (Email) + Pepper (Secret)
+ */
+function generateSHA256(input, salt) {
+  if (!input || !salt) throw new Error("Security Error: Missing Hash Inputs.");
+  const secret = salt.trim().toLowerCase() + SECURITY_PEPPER;
+  const signature = Utilities.computeHmacSha256Signature(input.trim(), secret);
+  return signature.map(b => ('0' + (b & 0xFF).toString(16)).slice(-2)).join('');
+}
+
+/**
+ * Mandatory Helper: Santize strings to prevent XSS and Template Injection
+ */
+function safeValue(text) {
+  if (typeof text !== 'string') return text || "";
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 /**
  * UI INITIALIZATION
  */
@@ -5,7 +32,8 @@ function doGet(e) {
   return HtmlService.createTemplateFromFile("Index")
     .evaluate()
     .setTitle("Payment Endorsement Platform")
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    // Use SAMEORIGIN to prevent malicious iframing (2026 standard)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT) //Set to Default Always for Security (requires user authentication, or performs actions in a user's Google account.)
     .addMetaTag("viewport", "width=device-width, initial-scale=1");
 }
 
@@ -94,39 +122,17 @@ function finalizeRegistration(formData) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-
-    const activeUser = Session.getActiveUser().getEmail();
+    const activeUser = Session.getActiveUser().getEmail(); // Server-side truth
     const ss = SpreadsheetApp.openById(USER_DB_ID);
     let sheet = ss.getSheetByName(USER_TAB);
 
-    // Auto-setup if sheet missing
-    if (!sheet) {
-      sheet = ss.insertSheet(USER_TAB);
-      sheet.appendRow([
-        "TIMESTAMP",
-        "FULL NAME",
-        "USERNAME",
-        "PASSWORD",
-        "ACCESS LEVEL",
-        "ORGANIC OR NON ORGANIC",
-        "PERMISSION STATUS",
-        "EMPLOYEE STATUS",
-      ]);
-    }
-
     const timestamp = new Date();
-    const username = activeUser;
-    const accessLevel = "REQUESTOR";
-    const permissionStatus = "Pending";
     const organicStatus = activeUser.toLowerCase().includes("@megaworld-lifestyle.com") ? "ORGANIC" : "NON ORGANIC";
 
-    // --- ENCRYPT PASSWORD HERE ---
-    // We trim to avoid accidental spaces and then convert to SHA-256 hash
-    const rawPassword = String(formData.password || "").trim();
-    const encryptedPassword = generateSHA256(rawPassword);
-    // ------------------------------
+    // SECURITY UPDATE: Passing activeUser as the SALT
+    const encryptedPassword = generateSHA256(formData.password, activeUser);
 
-    // GAP FILLING: Find first empty Row
+    // [Maintain your existing gap-filling logic...]
     const nameCol = sheet.getRange("B:B").getValues();
     let targetRow = -1;
     for (let i = 1; i < nameCol.length; i++) {
@@ -138,21 +144,12 @@ function finalizeRegistration(formData) {
     if (targetRow === -1) targetRow = sheet.getLastRow() + 1;
 
     const rowPayload = [
-      timestamp,          // Col A
-      formData.fullName,  // Col B
-      username,           // Col C
-      encryptedPassword,  // Col D (Now stored as a hash like "7d0211...")
-      accessLevel,        // Col E
-      organicStatus,      // Col F
-      permissionStatus,   // Col G
-      "INACTIVE",         // Col H
+      timestamp, safeValue(formData.fullName), activeUser, encryptedPassword,
+      "REQUESTOR", organicStatus, "Pending", "INACTIVE",
     ];
 
     sheet.getRange(targetRow, 1, 1, rowPayload.length).setValues([rowPayload]);
-
     return { success: true, message: "Registered under " + activeUser };
-  } catch (e) {
-    throw new Error("Persistence Error: " + e.message);
   } finally {
     lock.releaseLock();
   }
@@ -179,55 +176,31 @@ function generateSHA256(input) {
  * Main authentication function
  */
 function authenticateUser(credentials) {
-  // 1. Force Google to commit all pending changes before reading
   SpreadsheetApp.flush();
-
   const ss = SpreadsheetApp.openById(USER_DB_ID);
   const sheet = ss.getSheetByName(USER_TAB);
-
-  // 2. Read spreadsheet data
   const data = sheet.getDataRange().getDisplayValues();
-  data.shift(); // Remove headers
+  data.shift(); 
 
-  // 3. Normalize inputs
   const inputEmail = String(credentials.email || "").trim().toLowerCase();
-  
-  // --- PASSWORD HASHING ---
-  const rawInputPass = String(credentials.password || "").trim();
-  const hashedInputPass = generateSHA256(rawInputPass); 
-  // -------------------------
+  // SALT comparison must use the specific inputEmail
+  const hashedInputPass = generateSHA256(credentials.password, inputEmail); 
 
   const userRow = data.find((row) => {
-    const storedEmail = String(row[2] || "").trim().toLowerCase();
-    const storedPass = String(row[3] || "").trim(); // Matches against your 64-character hash
-    return storedEmail === inputEmail && storedPass === hashedInputPass;
+    return String(row[2]).trim().toLowerCase() === inputEmail && String(row[3]).trim() === hashedInputPass;
   });
 
   if (!userRow) throw new Error("Invalid credentials.");
 
-  // --- NEW STATUS LOGIC ---
-  const permission = String(userRow[6] || "").trim().toUpperCase(); // Col G
-  const employeeStatus = String(userRow[7] || "").trim().toUpperCase(); // Col H
+  const permission = String(userRow[6]).toUpperCase();
+  const status = String(userRow[7]).toUpperCase();
 
-  // 1. If not APPROVED, login is rejected regardless of Employee Status
-  if (permission !== "APPROVED") {
-    throw new Error(`Access Denied: Account is ${permission}. Contact admin for approval.`);
-  }
+  if (permission !== "APPROVED") throw new Error("Access Denied: Pending admin approval.");
+  if (status === "RESIGNED") throw new Error("Access Denied: Account deactivated.");
 
-  // 2. If APPROVED, check if they are RESIGNED
-  if (employeeStatus === "RESIGNED") {
-    throw new Error("Access Denied: Your account is locked because employee status is RESIGNED.");
-  }
-
-  // Logic outcome: (Approved AND not Resigned) will pass through here
   return {
     success: true,
-    user: {
-      fullName: userRow[1],
-      email: userRow[2],
-      role: userRow[4],
-      classification: userRow[5],
-    },
+    user: { fullName: userRow[1], email: userRow[2], role: userRow[4] }
   };
 }
 
@@ -500,159 +473,127 @@ function submitPasswordReset(email, newPassword) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-
     const ss = SpreadsheetApp.openById(USER_DB_ID);
     const sheet = ss.getSheetByName(USER_TAB);
-
     const data = sheet.getDataRange().getDisplayValues();
-
+    
     let rowIndex = -1;
-    let currentStoredHash = "";
-
     const cleanEmail = email.toString().trim().toLowerCase();
     
-    // --- ENCRYPT NEW PASSWORD ---
-    const hashedNewPassword = generateSHA256(String(newPassword).trim());
-    // ----------------------------
+    // Salted with user email
+    const hashedNewPassword = generateSHA256(newPassword, cleanEmail);
 
     for (let i = 0; i < data.length; i++) {
       if (data[i][2].toString().trim().toLowerCase() === cleanEmail) {
         rowIndex = i + 1;
-        currentStoredHash = data[i][3]; // This is now a hash from Col D
+        if (data[i][3] === hashedNewPassword) throw new Error("Must be a different password.");
         break;
       }
     }
 
-    if (rowIndex === -1) throw new Error("Account record not found.");
-
-    // Security: Block reusing the same password
-    // We compare the NEW hash against the STORED hash
-    if (hashedNewPassword === currentStoredHash) {
-      throw new Error("The new password must be different from your current password.");
-    }
-
-    /**
-     * Update Column D with the encrypted hash
-     */
+    if (rowIndex === -1) throw new Error("Record not found.");
     sheet.getRange(rowIndex, 4).setValue(hashedNewPassword);
-
     SpreadsheetApp.flush();
-
-    return {
-      success: true,
-      message: "Password updated successfully. You may now log in.",
-    };
-  } catch (e) {
-    throw new Error(e.message);
+    return { success: true };
   } finally {
     lock.releaseLock();
   }
 }
 
 /**
- * High-Performance Submission Logic
- * Optimized for datasets exceeding 1 million rows/cells.
- */
-/**
- * Processes the payment request submission
- * @param {Object} p - The payload from the frontend
- */
-/**
- * PROCESS SUBMISSION - The Single Source of Truth for Validation
+ * PROCESS SUBMISSION - Optimized for Data Integrity & Specific Error Messaging
  */
 function processSubmission(p) {
   const lock = LockService.getPublicLock();
   const SS_ID = "1YAvZmCdWXbjOcJA-uUY40e6qVqzyiHcB06NpiPcz6y4";
   const FOLDER_ID = "1eFcLGXPEnUSi14aPvvA9m2ATV8Racsuf";
-  const MAX_CELL_LIMIT = 9800000; // Limit safety (Google's max is 10M)
+  const MAX_CELL_LIMIT = 9800000;
 
   try {
-    if (!lock.tryLock(30000)) throw new Error("Server busy. Please try again.");
+    if (!lock.tryLock(30000)) throw new Error("Server Timeout: The database is busy. Please wait a moment and try again.");
 
-    const ss = SpreadsheetApp.openById(SS_ID);
+    // 1. Identity Verification (Server-Side Truth)
+    const authEmail = Session.getActiveUser().getEmail().toLowerCase().trim();
+    if (!authEmail) throw new Error("Security Alert: We could not identify your Google account. Please reload the app.");
 
-    // 1. CAPACITY CHECK: Check if Sheet is almost full
-    const totalCells = ss.getSheets().reduce((sum, s) => sum + (s.getMaxRows() * s.getMaxColumns()), 0);
-    if (totalCells >= MAX_CELL_LIMIT) {
-      throw new Error("System Error: Spreadsheet capacity reached. Please archive old data.");
-    }
-
-    const sh = ss.getSheetByName("SUBMISSIONS");
-
-    // 2. DATA EXTRACTION & VALIDATION
+    // 2. Data Validation & Formatting
     const rfpNo = p.header.rfpNo ? p.header.rfpNo.toString().trim() : "";
     const invNo = p.header.invoiceNo ? p.header.invoiceNo.toString().trim() : "";
-    const hasRfp = rfpNo !== "";
+    const identifier = rfpNo || invNo;
 
-    if (invNo === "") throw new Error("Validation Error: Invoice Number is required.");
+    if (!invNo) throw new Error("Input Required: An Invoice Number is mandatory for recording.");
+    if (!p.attachment || !p.attachment.base64) throw new Error("Attachment Missing: You must upload a supporting PDF.");
 
-    // RFP Duplicate Check (Only if RFP is filled)
-    if (hasRfp) {
-      const duplicate = sh.getRange("F:F").createTextFinder(rfpNo).matchEntireCell(true).findNext();
-      if (duplicate) throw new Error("RFP Number " + rfpNo + " has already been submitted.");
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const sh = ss.getSheetByName("SUBMISSIONS");
+
+    // 3. System Limits Check
+    const totalCells = ss.getSheets().reduce((sum, s) => sum + (s.getMaxRows() * s.getMaxColumns()), 0);
+    if (totalCells >= MAX_CELL_LIMIT) throw new Error("Database Full: System cell limit (10M) approaching. Please archive old transactions.");
+
+    // 4. Primary/Secondary Conflict Logic
+    const primaryEmails = p.participants.filter(x => x.tag === "Primary").map(x => x.email.toLowerCase().trim());
+    const secondaryRaw = p.participants.filter(x => x.tag === "Secondary").map(x => x.email.toLowerCase().trim());
+    
+    // Server-side guard against overlaps
+    const overlapEmails = secondaryRaw.filter(email => primaryEmails.includes(email));
+    if (overlapEmails.length > 0) throw new Error("Duplicate Roles: The email(s) " + overlapEmails.join(", ") + " are set as both Primary AND Secondary. This is not allowed.");
+
+    // 5. RFP Duplicate Check
+    if (rfpNo !== "") {
+      const existingRfp = sh.getRange("F:F").createTextFinder(rfpNo).matchEntireCell(true).findNext();
+      if (existingRfp) throw new Error("Transaction Already Exists: RFP No '" + rfpNo + "' was previously submitted.");
     }
 
-    // 3. FILE ASSETS
+    // 6. Drive & Folder Scoping
     const folder = DriveApp.getFolderById(FOLDER_ID);
-    const identifier = hasRfp ? rfpNo : invNo;
-    const blob = Utilities.newBlob(Utilities.base64Decode(p.attachment.base64), "application/pdf", identifier + "_Support.pdf");
-    const uploadedFileUrl = folder.createFile(blob).getUrl();
-    const rfpCopyUrl = (typeof createRfpPdf === 'function') ? createRfpPdf(p, folder) : "N/A";
 
-    // 4. THE ROW MAP: Define strictly where each data point lands
-    // This allows you to easily move rows or see column indices at a glance.
-    
-    // Prep Particulars list
-    let partsMap = {};
+    // Secure Support Upload
+    let supportUrl = "";
+    try {
+      const blob = Utilities.newBlob(Utilities.base64Decode(p.attachment.base64), "application/pdf", safeValue(identifier) + "_Support.pdf");
+      const file = folder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.NONE); 
+      supportUrl = file.getUrl();
+    } catch (driveErr) {
+      throw new Error("File Upload Failed: System couldn't save to the designated folder. Please check your Drive space.");
+    }
+
+    // Secure RFP Auto-Gen
+    const rfpCopyUrl = createRfpPdf(p, folder);
+
+    // 7. Field Mapping with Sanitization
+    let parts = {};
     p.tableFields.forEach(f => {
-      let val = p.particulars[f] || "";
-      if (f.toUpperCase().includes("AMOUNT")) val = parseFloat(val.toString().replace(/[^0-9.-]/g, "")) || 0;
-      partsMap[f] = val;
+      let v = p.particulars[f] || "";
+      if (f.toUpperCase().includes("AMOUNT")) v = parseFloat(v.toString().replace(/[^0-9.-]/g, "")) || 0;
+      else v = safeValue(v); 
+      parts[f] = v;
     });
 
-    const finalRowData = [
-      /* Col A: SUBMISSION ID         */ "TXN-" + Utilities.getUuid().split("-")[0].toUpperCase(),
-      /* Col B: SUBMISSION DATE       */ new Date(),
-      /* Col C: USER EMAIL            */ Session.getActiveUser().getEmail(),
-      /* Col D: PRIMARY RECIPIENT      */ p.participants.filter(x => x.tag === "Primary").map(x => x.email).join(", "),
-      /* Col E: SECONDARY RECIPIENT    */ p.participants.filter(x => x.tag === "Secondary").map(x => x.email).join(", "),
-      /* Col F: RFP|PEF NO.           */ hasRfp ? rfpNo : "N/A",
-      /* Col G: DUE DATE              */ p.header.dueDate || "N/A",
-      
-      /* --- START OF PARTICULARS --- */
-      /* Col H: YEAR                  */ partsMap["YEAR"],
-      /* Col I: MONTH                 */ partsMap["MONTH"],
-      /* Col J: PAYOR NAME            */ partsMap["PAYOR NAME"],
-      /* Col K: PAYEE NAME            */ partsMap["PAYEE NAME"],
-      /* Col L: PROPERTY              */ partsMap["PROPERTY"],
-      /* Col M: LOCATION              */ partsMap["LOCATION"],
-      /* Col N: SECTOR                */ partsMap["SECTOR"],
-      /* Col O: KINDS OF SERVICE      */ partsMap["KINDS OF SERVICE"],
-      /* Col P: CONTRACT NO           */ partsMap["CONTRACT NO"],
-      /* Col Q: CONTRACT AMOUNT       */ partsMap["CONTRACT AMOUNT"],
-
-      /* Col R: INVOICE NO            */ invNo, // <--- INVOICE PLACED AFTER CONTRACT AMOUNT
-
-      /* Col S: BILLING PERIOD        */ partsMap["BILLING PERIOD"],
-      /* Col T: SOA AMOUNT            */ partsMap["SOA AMOUNT"],
-      /* Col U: GENERAL STATUS        */ partsMap["GENERAL STATUS"],
-      /* --- END OF PARTICULARS ---   */
-
-      /* Col V: UPLOADED FILE         */ uploadedFileUrl,
-      /* Col W: RFP COPY              */ rfpCopyUrl,
-      /* Col X: SOURCEFILE            */ p.header.sourceFileUrl || p.header.sourceFileName,
-      /* Col Y: SOURCEFILE TABS       */ p.header.sourceTabName
+    const finalRow = [
+      "TXN-" + Utilities.getUuid().split("-")[0].toUpperCase(), 
+      new Date(), 
+      authEmail, 
+      primaryEmails.join(", "), 
+      secondaryRaw.join(", "), // Safe as it was de-duplicated from primary above
+      safeValue(rfpNo || "N/A"), 
+      safeValue(p.header.dueDate || "N/A"),
+      parts["YEAR"], parts["MONTH"], parts["PAYOR NAME"], parts["PAYEE NAME"],
+      parts["PROPERTY"], parts["LOCATION"], parts["SECTOR"], parts["KINDS OF SERVICE"],
+      parts["CONTRACT NO"], parts["CONTRACT AMOUNT"],
+      safeValue(invNo), 
+      parts["BILLING PERIOD"], parts["SOA AMOUNT"], parts["GENERAL STATUS"],
+      supportUrl, 
+      rfpCopyUrl, 
+      safeValue(p.header.sourceFileName || "No Reference File"), 
+      safeValue(p.header.sourceTabName || "N/A")
     ];
 
-    // 5. SUBMIT TO SHEET
-    sh.appendRow(finalRowData);
+    sh.appendRow(finalRow);
     SpreadsheetApp.flush();
 
-    // 6. RETURN SUCCESS
-    return {
-      success: true,
-      message: `${hasRfp ? 'RFP Number' : 'Invoice Number'}: ${identifier}`
-    };
+    return { success: true, message: identifier };
 
   } catch (e) {
     return { success: false, message: e.message };
@@ -660,52 +601,54 @@ function processSubmission(p) {
     if (lock.hasLock()) lock.releaseLock();
   }
 }
+
 /**
- * Generates a PDF.
+ * Generates a Secure PDF with Logo and Sanity Checks
  */
 function createRfpPdf(p, folder) {
   const LOGO_FILE_ID = "1QZ3XkRk1x-p_GFSjKhQO8i4dmIVzE1dG";
 
-  const getLogoDataUri = (fileId) => {
-    try {
-      const file = DriveApp.getFileById(fileId);
-      return "data:" + file.getMimeType() + ";base64," + Utilities.base64Encode(file.getBlob().getBytes());
-    } catch (e) {
-      return "";
-    }
-  };
+  // --- LOGO FETCHING LOGIC ---
+  let logoBase64 = "";
+  try {
+    const logoFile = DriveApp.getFileById(LOGO_FILE_ID);
+    logoBase64 = "data:" + logoFile.getMimeType() + ";base64," + Utilities.base64Encode(logoFile.getBlob().getBytes());
+  } catch (e) {
+    console.warn("Logo could not be loaded: " + e.message);
+  }
 
-  const logoBase64 = getLogoDataUri(LOGO_FILE_ID);
-
-  // --- REFACTOR 1: PARTICULARS LOOP ---
+  // --- SECURE PARTICULARS TABLE GENERATION ---
   let tableRowsHtml = "";
   for (let i = 0; i < p.tableFields.length; i += 3) {
     tableRowsHtml += "<tr>";
     for (let j = 0; j < 3; j++) {
       const field = p.tableFields[i + j];
-      tableRowsHtml += field
-        ? `<td class="grid-cell" style="width: 33.33%;">
-             <div class="field-label">${field.replace(/_/g, " ")}</div>
-             <div class="field-value">${p.particulars[field] || "—"}</div>
-           </td>`
-        : `<td class="grid-cell" style="width: 33.33%;"></td>`;
+      if (field) {
+        tableRowsHtml += `
+          <td class="grid-cell" style="width: 33.33%;">
+             <div class="field-label">${safeValue(field.replace(/_/g, " "))}</div>
+             <div class="field-value">${safeValue(String(p.particulars[field] || "—"))}</div>
+          </td>`;
+      } else {
+        tableRowsHtml += `<td class="grid-cell" style="width: 33.33%;"></td>`;
+      }
     }
     tableRowsHtml += "</tr>";
   }
 
-  // --- REFACTOR 2: GENERATE 5 LINES ---
+  // --- STATIC NOTE LINES ---
   let noteLinesHtml = "";
   for (let n = 0; n < 5; n++) {
     noteLinesHtml += '<div class="note-line"></div>';
   }
 
+  // --- COMPLETE SECURE HTML TEMPLATE ---
   const html = `
   <html>
   <head>
     <style>
       @page { size: letter portrait; margin: 0.35in; }
       body { font-family: 'Arial', sans-serif; font-size: 10pt; color: #000; line-height: 1.2; margin: 0; }
-
       .brand-wrapper { text-align: center; margin-bottom: 8px; width: 100%; }
       .logo-img { width: 170px; height: auto; }
       .doc-title { 
@@ -716,52 +659,14 @@ function createRfpPdf(p, folder) {
       .meta-table { width: 100%; margin-bottom: 15px; border-collapse: collapse; }
       .meta-label { font-size: 7.5pt; color: #555; text-transform: uppercase; font-weight: bold; }
       .meta-value { font-size: 11pt; font-weight: bold; border-bottom: 1px solid #ccc; padding: 2px 0; }
-      .particulars-grid { 
-        width: 100%; 
-        border-collapse: collapse; 
-        table-layout: fixed; /* ESSENTIAL: Keeps columns at exactly 33.3% */
-        border: 1.5px solid #000;
-      }
-       .grid-cell { 
-        border: 1px solid #000; 
-        padding: 6px 8px; 
-        vertical-align: top; 
-        
-        /* THE OVERLAP FIX: */
-        word-wrap: break-word;       /* Standard */
-        overflow-wrap: break-word;  /* Modern fallback */
-        word-break: break-word;     /* Support for long continuous strings */
-        white-space: normal;        /* Allows the line to break */
-        overflow: hidden;           /* Safety: clipped if it tries to invade neighbor */
-        
-        /* Allow height to grow based on content */
-        height: auto; 
-        min-height: 42px;           /* Minimum visual height for short data */
-      }
-
-      .field-label { 
-        font-size: 7pt; 
-        color: #333; 
-        text-transform: uppercase; 
-        font-weight: bold; 
-        margin-bottom: 3px; 
-      }
-      .field-value { 
-        font-size: 9.5pt;           /* Slightly larger for clarity */
-        font-weight: bold; 
-        display: block;             /* Ensure it fills the cell container */
-        color: #000;
-      }
-      
+      .particulars-grid { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1.5px solid #000; }
+      .grid-cell { border: 1px solid #000; padding: 6px 8px; vertical-align: top; word-wrap: break-word; min-height: 42px; }
+      .field-label { font-size: 7pt; color: #333; text-transform: uppercase; font-weight: bold; margin-bottom: 3px; }
+      .field-value { font-size: 9.5pt; font-weight: bold; color: #000; }
       .notes-title { font-size: 9pt; font-weight: bold; text-transform: uppercase; margin-top: 15px; margin-bottom: 5px; }
-      /* Spacing fix for 5 lines */
       .note-line { width: 100%; height: 23px; border-bottom: 1px solid #000; }
-
       .sig-table { margin-top: 35px; width: 100%; border-collapse: collapse; }
-      .sig-line { 
-        border-top: 1.5px solid #000; width: 85%; margin: 35px auto 0 auto; 
-        padding-top: 6px; font-size: 8pt; font-weight: bold; text-align: center; text-transform: uppercase;
-      }
+      .sig-line { border-top: 1.5px solid #000; width: 85%; margin: 35px auto 0 auto; padding-top: 6px; font-size: 8pt; font-weight: bold; text-align: center; text-transform: uppercase; }
     </style>
   </head>
   <body>
@@ -772,15 +677,15 @@ function createRfpPdf(p, folder) {
       <tr>
         <td style="width: 45%;">
           <div class="meta-label">RFP Number</div>
-          <div class="meta-value" style="font-size: 14pt;">${p.header.rfpNo}</div>
+          <div class="meta-value" style="font-size: 14pt;">${safeValue(p.header.rfpNo)}</div>
         </td>
         <td style="width: 27.5%; vertical-align: bottom;">
           <div class="meta-label">Date Requested</div>
-          <div class="meta-value">${p.header.date}</div>
+          <div class="meta-value">${safeValue(p.header.date)}</div>
         </td>
         <td style="width: 27.5%; vertical-align: bottom;">
           <div class="meta-label">Due Date</div>
-          <div class="meta-value">${p.header.dueDate}</div>
+          <div class="meta-value">${safeValue(p.header.dueDate)}</div>
         </td>
       </tr>
     </table>
@@ -802,42 +707,74 @@ function createRfpPdf(p, folder) {
   </body>
   </html>`;
 
+  // Create PDF
   const pdfBlob = Utilities.newBlob(html, "text/html").getAs("application/pdf").setName(`RFP_${p.header.rfpNo}.pdf`);
-  return folder.createFile(pdfBlob).getUrl();
+  const file = folder.createFile(pdfBlob);
+  
+  // Set explicit security permissions
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.NONE);
+  
+  return file.getUrl();
 }
+
 /**
- * Retrieves a unique list of emails used in previous transactions for suggestions.
+ * Backend: Retrieves suggestions for the email search list.
  */
 function getPreviousParticipantEmails() {
   const SS_ID = "1YAvZmCdWXbjOcJA-uUY40e6qVqzyiHcB06NpiPcz6y4";
-  const sh = SpreadsheetApp.openById(SS_ID).getSheetByName("SUBMISSIONS");
-  const lastRow = sh.getLastRow();
+  try {
+    const sh = SpreadsheetApp.openById(SS_ID).getSheetByName("SUBMISSIONS");
+    if (!sh) throw new Error("Data retrieval source (SUBMISSIONS) not found.");
 
-  if (lastRow < 2) return [];
+    const lastRow = sh.getLastRow();
+    if (lastRow < 2) return [];
 
-  // We are grabbing Columns D (Primary) and E (Secondary)
-  // Which are index 4 and 5 in the row
-  const data = sh.getRange(2, 4, lastRow - 1, 2).getValues();
-
-  let emailSet = new Set();
-
-  data.forEach((row) => {
-    // Column D (Primary Emails string)
-    if (row[0]) {
-      row[0].split(",").forEach((e) => {
-        let clean = e.trim().toLowerCase();
-        if (clean.includes("@")) emailSet.add(clean);
+    const data = sh.getRange(2, 4, lastRow - 1, 2).getValues(); 
+    const results = new Set();
+    
+    data.forEach(row => {
+      row.forEach(cell => {
+        if (cell && cell.toString().includes("@")) {
+          cell.toString().split(",").forEach(email => {
+            const clean = email.trim().toLowerCase();
+            if (clean) results.add(clean);
+          });
+        }
       });
-    }
-    // Column E (Secondary Emails string)
-    if (row[1]) {
-      row[1].split(",").forEach((e) => {
-        let clean = e.trim().toLowerCase();
-        if (clean.includes("@")) emailSet.add(clean);
-      });
-    }
-  });
+    });
 
-  // Convert Set back to an Array and return
-  return Array.from(emailSet).sort();
+    return Array.from(results).sort();
+  } catch (e) {
+    throw new Error("System Suggestion Failure: " + e.message);
+  }
+}
+/**
+ * Frontend: addSecondaryRecipient
+ * Blocks addition if already in Primary list or invalid.
+ */
+function addSecondaryRecipient(emailToVerify) {
+  const cleanEmail = emailToVerify.trim().toLowerCase();
+  
+  if (!cleanEmail.includes("@") || !cleanEmail.includes(".")) {
+    Swal.fire("Invalid Format", "The entry '" + cleanEmail + "' does not appear to be a valid email address.", "error");
+    return;
+  }
+
+  // Identify overlaps
+  const isPrimary = formState.participants.some(p => p.email.toLowerCase() === cleanEmail && p.tag === "Primary");
+
+  if (isPrimary) {
+    Swal.fire({
+      title: "Duplicate Found",
+      text: "The person " + cleanEmail + " is already assigned as a Primary Recipient.",
+      icon: "warning"
+    });
+    return;
+  }
+
+  // Prevent UI double-entry in the same category
+  if (formState.participants.some(p => p.email.toLowerCase() === cleanEmail && p.tag === "Secondary")) return;
+
+  // Function from your existing logic to add pill to UI
+  addParticipant(cleanEmail, "Secondary"); 
 }
