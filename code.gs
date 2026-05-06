@@ -71,26 +71,26 @@ function getActiveUserEmail() {
 
 /**
  * Stage 1: Security Check & OTP
- * Logic: Checks if account already exists. Only sends code if new user.
+ * Logic: Checks if the account already exists before sending the code.
  */
 function sendVerificationCode(email) {
-  const sessionEmail = Session.getActiveUser().getEmail();
-  if (!email || email !== sessionEmail) throw new Error("Security Violation: Identity mismatch.");
+  if (!email) throw new Error("Email address is required.");
 
+  const cleanEmail = email.trim().toLowerCase();
   const ss = SpreadsheetApp.openById(USER_DB_ID);
   const sheet = ss.getSheetByName(USER_TAB);
   const data = sheet.getDataRange().getValues();
 
   // Index 2 is USERNAME/EMAIL (Column C)
-  const alreadyExists = data.some((row) => row[2] === email);
+  const alreadyExists = data.some((row) => String(row[2]).trim().toLowerCase() === cleanEmail);
   if (alreadyExists) throw new Error("This email is already registered. Please proceed to Login.");
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const cache = CacheService.getScriptCache();
-  cache.put(email, otp, 600); // 10 min expiry
+  cache.put(cleanEmail, otp, 600); // 10 min expiry
 
   try {
-    MailApp.sendEmail(email, "Account Verification Code", "Your verification code is: " + otp);
+    MailApp.sendEmail(cleanEmail, "Account Verification Code", "Your verification code is: " + otp);
     return { success: true };
   } catch (e) {
     throw new Error("SMTP Error: Failed to deliver verification email.");
@@ -101,11 +101,9 @@ function sendVerificationCode(email) {
  * Stage 2: OTP Validation
  */
 function verifyRegistrationCode(email, userCode) {
-  const sessionEmail = Session.getActiveUser().getEmail();
-  if (email !== sessionEmail) throw new Error("Security Violation: Session hijacked.");
-
+  const cleanEmail = email.trim().toLowerCase();
   const cache = CacheService.getScriptCache();
-  const storedCode = cache.get(email);
+  const storedCode = cache.get(cleanEmail);
 
   if (!storedCode) throw new Error("Verification code expired.");
   if (storedCode !== userCode) throw new Error("Incorrect verification code.");
@@ -115,24 +113,25 @@ function verifyRegistrationCode(email, userCode) {
 
 /**
  * Stage 3: Write Record with Gap-Filling
- * AUTOMATIC VALUES: USERNAME = Email, ACCESS LEVEL = REQUESTOR, STATUS = PENDING
+ * AUTOMATIC VALUES: USERNAME = Email, ACCESS LEVEL = Dynamic, STATUS = PENDING
  */
-
 function finalizeRegistration(formData) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    const activeUser = Session.getActiveUser().getEmail(); // Server-side truth
     const ss = SpreadsheetApp.openById(USER_DB_ID);
     let sheet = ss.getSheetByName(USER_TAB);
 
     const timestamp = new Date();
-    const organicStatus = activeUser.toLowerCase().includes("@megaworld-lifestyle.com") ? "ORGANIC" : "NON ORGANIC";
+    const activeUser = formData.email.trim().toLowerCase();
+    const organicStatus = activeUser.includes("@megaworld-lifestyle.com") ? "ORGANIC" : "NON ORGANIC";
 
-    // SECURITY UPDATE: Passing activeUser as the SALT
+    // Dynamic Access Title Logic
+    const accessLevel = formData.department === "PCU" ? "REQUESTOR" : "APPROVER";
+
+    // Encrypt Password
     const encryptedPassword = generateSHA256(formData.password, activeUser);
 
-    // [Maintain your existing gap-filling logic...]
     const nameCol = sheet.getRange("B:B").getValues();
     let targetRow = -1;
     for (let i = 1; i < nameCol.length; i++) {
@@ -143,9 +142,19 @@ function finalizeRegistration(formData) {
     }
     if (targetRow === -1) targetRow = sheet.getLastRow() + 1;
 
+    // Expanded Payload to reach Columns J and K
     const rowPayload = [
-      timestamp, safeValue(formData.fullName), activeUser, encryptedPassword,
-      "REQUESTOR", organicStatus, "Pending", "INACTIVE",
+      timestamp, 
+      safeValue(formData.fullName), 
+      activeUser, 
+      encryptedPassword,
+      accessLevel,            // Col E
+      organicStatus,          // Col F
+      "Pending",              // Col G
+      "",                     // Col H
+      "",                     // Col I (Blank Spacer)
+      safeValue(formData.department),     // Col J
+      safeValue(formData.jobDesignation)  // Col K
     ];
 
     sheet.getRange(targetRow, 1, 1, rowPayload.length).setValues([rowPayload]);
