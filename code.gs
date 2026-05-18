@@ -1,30 +1,20 @@
-
-const SECURITY_PEPPER = "v9_PEF_SYS_2026_!@#"; 
-
-/**
- * Modern 2026 Secure Hash
- * Uses HmacSha256 + Salt (Email) + Pepper (Secret)
+/** 
+ * GLOBAL CONFIGURATION
  */
-function generateSHA256(input, salt) {
-  if (!input || !salt) throw new Error("Security Error: Missing Hash Inputs.");
-  const secret = salt.trim().toLowerCase() + SECURITY_PEPPER;
-  const signature = Utilities.computeHmacSha256Signature(input.trim(), secret);
-  return signature.map(b => ('0' + (b & 0xFF).toString(16)).slice(-2)).join('');
-}
-
-/**
- * Mandatory Helper: Santize strings to prevent XSS and Template Injection
- */
-function safeValue(text) {
-  if (typeof text !== 'string') return text || "";
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
+const STORAGE_CONFIG = {
+  PRIMARY_DB_ID: "1YAvZmCdWXbjOcJA-uUY40e6qVqzyiHcB06NpiPcz6y4",      
+  MASTER_LOG_ID: "1O8zbQ85U_Z4eskB0TYWNY1jZWRr6nFnVJTTy-d_EDF0",      
+  REGISTRY_ID: "1TI12SzvfLUtVXa1WbiklpY3KFOZOMvmSXfN3Zo18O7g",        
+  USER_DB_ID: "1dBO8ThI7FEKb24D9sPVWokfXLuWUx5aCQvisrT9wBvI",         
+  ARCHIVE_FOLDER_ID: "1hIMae05PAHR1bwE5VYE3heUQO71tey3Z",
+  ATTACHMENT_FOLDER_ID: "1eFcLGXPEnUSi14aPvvA9m2ATV8Racsuf",
+  DB_CELL_LIMIT: 8500000,         
+  MASTER_CELL_LIMIT: 8500000,  
+  REGISTRY_CELL_LIMIT: 8000000, 
+  MAX_PDF_SIZE_MB: 15,
+  SECURITY_PEPPER: "v9_PEF_SYS_2027_!@#",
+  USER_TAB: "PEP"
+};
 /**
  * UI INITIALIZATION
  */
@@ -32,8 +22,7 @@ function doGet(e) {
   return HtmlService.createTemplateFromFile("Index")
     .evaluate()
     .setTitle("Payment Endorsement Platform")
-    // Use SAMEORIGIN to prevent malicious iframing (2026 standard)
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT) //Set to Default Always for Security (requires user authentication, or performs actions in a user's Google account.)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT)
     .addMetaTag("viewport", "width=device-width, initial-scale=1");
 }
 
@@ -41,8 +30,127 @@ function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
-const USER_DB_ID = "1dBO8ThI7FEKb24D9sPVWokfXLuWUx5aCQvisrT9wBvI";
-const USER_TAB = "PEP";
+/**
+ * REPLACEMENT FOR: generateSHA256 
+ * Single, secure salted hashing function used for Login, Reg, and Reset.
+ */
+function generateSHA256(input, salt) {
+  const safeSalt = salt ? salt.trim().toLowerCase() : "SYSTEM_DEFAULT";
+  const signature = Utilities.computeHmacSha256Signature(input.trim(), safeSalt + STORAGE_CONFIG.SECURITY_PEPPER);
+  return signature.map(b => ('0' + (b & 0xFF).toString(16)).slice(-2)).join('');
+}
+
+/**
+ * REPLACEMENT: replicateMasterLog
+ * Handles cloning of Master system with relay tracking.
+ */
+function replicateMasterLog(fullId) {
+  const anchorId = STORAGE_CONFIG.REGISTRY_ID;
+  const anchorSs = SpreadsheetApp.openById(anchorId);
+  const relaySheet = anchorSs.getSheetByName("MASTER") || anchorSs.insertSheet("MASTER");
+  
+  const folder = DriveApp.getFolderById(STORAGE_CONFIG.ARCHIVE_FOLDER_ID);
+  const name = "MASTER_SHARD_" + Utilities.formatDate(new Date(), "GMT+8", "yyyyMMdd_HHmm");
+  
+  // Clone current master
+  const clone = DriveApp.getFileById(fullId).makeCopy(name, folder);
+  const newSs = SpreadsheetApp.openById(clone.getId());
+
+  // Wipe data from tabs except GLOBAL_COUNTER
+  newSs.getSheets().forEach(sh => {
+    if (sh.getName() === "GLOBAL_COUNTER") return; 
+    if (sh.getMaxRows() > 1) sh.getRange(2, 1, sh.getMaxRows() - 1, sh.getMaxColumns()).clearContent();
+    if (sh.getMaxRows() > 100) sh.deleteRows(101, sh.getMaxRows() - 100);
+  });
+
+  // Record URL in the Registry Anchor
+  relaySheet.appendRow([newSs.getUrl(), "LIVE", new Date()]);
+  return newSs.getId();
+}
+/**
+ * Mandatory Helper: Santize strings to prevent XSS and Template Injection
+ */
+function safeValue(t) {
+  if (typeof t !== 'string') return t || "";
+  return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/**
+ * PRIVATE HELPER: Safe ID Extractor
+ * Prevents "Reading 0 of null" errors.
+ */
+function extractIdSafely(text, fallback) {
+  if (!text || typeof text !== 'string') return fallback;
+  const match = text.match(/[-\w]{25,}/);
+  return match ? match[0] : fallback;
+}
+
+/**
+ * REPLACEMENT: getLiveMasterId
+ * Looks in File 3 (Registry) for the Live Master URL.
+ */
+function getLiveMasterId() {
+  const ss = SpreadsheetApp.openById(STORAGE_CONFIG.REGISTRY_ID);
+  const sh = ss.getSheetByName("MASTER") || ss.insertSheet("MASTER").appendRow(["URL","Status","Date"]);
+  
+  const data = sh.getRange("A:A").getValues().filter(String).flat();
+  
+  // If data length is 1 or less, only the header exists. Use Anchor.
+  if (data.length <= 1) return STORAGE_CONFIG.MASTER_LOG_ID;
+  
+  const latestUrl = data[data.length - 1];
+  return extractIdSafely(latestUrl, STORAGE_CONFIG.MASTER_LOG_ID);
+}
+
+/**
+ * REPLACEMENT: getLiveRegistryId
+ * Looks in File 3 (Registry) for sharded versions of itself.
+ */
+function getLiveRegistryId() {
+  const ss = SpreadsheetApp.openById(STORAGE_CONFIG.REGISTRY_ID);
+  const sh = ss.getSheetByName("REGISTRY_RELAY") || ss.insertSheet("REGISTRY_RELAY").appendRow(["URL","Status","Date"]);
+  
+  const data = sh.getRange("A:A").getValues().filter(String).flat();
+  
+  if (data.length <= 1) return STORAGE_CONFIG.REGISTRY_ID;
+  
+  const latestUrl = data[data.length - 1];
+  return extractIdSafely(latestUrl, STORAGE_CONFIG.REGISTRY_ID);
+}
+
+/**
+ * REPLACEMENT: getActiveDatabaseId
+ * Orchestrates Master capacity check and resolves Database ID.
+ */
+function getActiveDatabaseId() {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    
+    let masterId = getLiveMasterId();
+    let masterSs = SpreadsheetApp.openById(masterId);
+    
+    // --- 1. Master Limit Check ---
+    const mCells = masterSs.getSheets().reduce((sum, s) => sum + (s.getMaxRows() * s.getMaxColumns()), 0);
+    if (mCells >= STORAGE_CONFIG.MASTER_CELL_LIMIT) {
+       masterId = replicateMasterLog(masterId);
+       masterSs = SpreadsheetApp.openById(masterId);
+    }
+
+    // --- 2. Database Resolve ---
+    const dbTab = masterSs.getSheetByName("DATABASES_ARCHIVES") || masterSs.insertSheet("DATABASES_ARCHIVES").appendRow(["FILE URL"]);
+    const urls = dbTab.getRange("A:A").getValues().filter(String).flat();
+    
+    // If only header, use the default primary ID
+    if (urls.length <= 1) return STORAGE_CONFIG.PRIMARY_DB_ID;
+
+    const latestDbUrl = urls[urls.length - 1];
+    return extractIdSafely(latestDbUrl, STORAGE_CONFIG.PRIMARY_DB_ID);
+
+  } finally {
+    if (lock.hasLock()) lock.releaseLock();
+  }
+}
 
 /**
  * ==========================================
@@ -51,22 +159,182 @@ const USER_TAB = "PEP";
  */
 
 function getActiveUserEmail() {
-  const activeEmail = Session.getActiveUser().getEmail();
-  const effectiveEmail = Session.getEffectiveUser().getEmail();
+  return Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail();
+}
 
-  // LOGGING: Check your Apps Script Logs to see what is happening
-  console.log("Active User: " + activeEmail);
-  console.log("Effective User: " + effectiveEmail);
+function replicateMaster(fullId) {
+  const anchor = SpreadsheetApp.openById(STORAGE_CONFIG.MASTER_LOG_ID);
+  const relay = anchor.getSheetByName("MASTER_RELAY_LOG");
+  const folder = DriveApp.getFolderById(STORAGE_CONFIG.ARCHIVE_FOLDER_ID);
+  
+  const clone = DriveApp.getFileById(fullId).makeCopy("PEP_MASTER_LIVE_" + Utilities.formatDate(new Date(), "GMT+8", "yyyyMMdd"), folder);
+  const cloneSs = SpreadsheetApp.openById(clone.getId());
+  
+  // Wipe database links in the clone so it starts "light"
+  const logTab = cloneSs.getSheetByName("DATABASES_ARCHIVES");
+  if (logTab && logTab.getMaxRows() > 1) logTab.getRange(2, 1, logTab.getMaxRows()-1, logTab.getMaxColumns()).clearContent();
+  
+  relay.appendRow([clone.getUrl(), "LIVE", new Date()]);
+  return clone.getId();
+}
 
-  const finalEmail = activeEmail || effectiveEmail;
+/**
+ * Standard Cloner: Clones, Wipes data, Updates Parent Log.
+ */
+function autoHealFile(oldId, masterLogSheet, type) {
+  const folder = DriveApp.getFolderById(STORAGE_CONFIG.ARCHIVE_FOLDER_ID);
+  const copy = DriveApp.getFileById(oldId).makeCopy(`PEP_${type}_SHARD_${Utilities.formatDate(new Date(), "GMT+8", "yyyyMMdd_HHmm")}`, folder);
+  const ss = SpreadsheetApp.openById(copy.getId());
+  
+  ss.getSheets().forEach(sh => {
+    if (sh.getMaxRows() > 1) sh.getRange(2, 1, sh.getMaxRows()-1, sh.getMaxColumns()).clearContent();
+    if (sh.getMaxRows() > 100) sh.deleteRows(101, sh.getMaxRows() - 100); // Shave physically to keep fast
+  });
 
-  if (!finalEmail) {
-    throw new Error(
-      "Google Identity not found. Please ensure you are logged into your browser with your company email."
-    );
+  masterLogSheet.appendRow([copy.getUrl()]);
+  return copy.getId();
+}
+
+/**
+ * High-Volume Optimized Sharding
+ */
+function maintenanceEngine(targetId, parentId, parentTab, fixedCol, cellLimit) {
+  const ss = SpreadsheetApp.openById(targetId);
+  const totalCells = ss.getSheets().reduce((sum, s) => sum + (s.getMaxRows() * s.getMaxColumns()), 0);
+
+  if (totalCells >= cellLimit) {
+    const folder = DriveApp.getFolderById(STORAGE_CONFIG.ARCHIVE_FOLDER_ID);
+    const ts = Utilities.formatDate(new Date(), "GMT+8", "yyyyMMdd_HHmmss");
+    
+    // 1. Copy Data to Archive
+    const backup = DriveApp.getFileById(targetId).makeCopy(`BACKUP_${ts}_${ss.getName()}`, folder);
+    const url = backup.getUrl();
+
+    // 2. Clear current file (preserving headers)
+    ss.getSheets().forEach(sh => {
+      const lastRow = sh.getLastRow();
+      if (lastRow > 1) sh.getRange(2, 1, lastRow - 1, sh.getMaxColumns()).clearContent();
+      
+      // SHAVE FILE: Force shrink rows to speed up future writes
+      if (sh.getMaxRows() > 100) sh.deleteRows(101, sh.getMaxRows() - 100);
+    });
+
+    // 3. Log to Parent
+    const parentSs = SpreadsheetApp.openById(parentId);
+    let parentSh = parentSs.getSheetByName(parentTab) || parentSs.insertSheet(parentTab);
+    
+    // Column logic: if File 1 archive, use next empty A/B. If File 2 archive, fixed Col 1.
+    let col = fixedCol;
+    if (!col) {
+      const lastA = parentSh.getRange("A:A").getNextDataCell(SpreadsheetApp.Direction.DOWN).getRow();
+      const lastB = parentSh.getRange("B:B").getNextDataCell(SpreadsheetApp.Direction.DOWN).getRow();
+      col = (lastA <= lastB) ? 1 : 2;
+    }
+    
+    parentSh.getRange(parentSh.getLastRow() + 1, col).setValue(url);
+    SpreadsheetApp.flush();
   }
+}
 
-  return finalEmail;
+function maintainSystem(targetId, parentId, parentTab, fixedCol, cellLimit) {
+  const ss = SpreadsheetApp.openById(targetId);
+  const sheets = ss.getSheets();
+  const totalCells = sheets.reduce((sum, s) => sum + (s.getMaxRows() * s.getMaxColumns()), 0);
+
+  if (totalCells >= cellLimit) {
+    const folder = DriveApp.getFolderById(STORAGE_CONFIG.ARCHIVE_FOLDER_ID);
+    const ts = Utilities.formatDate(new Date(), "GMT+8", "yyyyMMdd_HHmm");
+    
+    // 1. Snapshot the data
+    const backup = DriveApp.getFileById(targetId).makeCopy(`BACKUP_${ts}_${ss.getName()}`, folder);
+    const backupUrl = backup.getUrl();
+
+    // 2. Self-Heal Target File (Empty rows but KEEP IDs and HEADERS)
+    sheets.forEach(sh => {
+      const lastRow = sh.getLastRow();
+      if (lastRow > 1) {
+        sh.getRange(2, 1, lastRow - 1, sh.getMaxColumns()).clearContent();
+      }
+      // Speed Boost: Physically delete thousands of phantom rows to speed up writing.
+      if (sh.getMaxRows() > 101) sh.deleteRows(102, sh.getMaxRows() - 101);
+    });
+
+    // 3. Log into Parent File
+    const pSs = SpreadsheetApp.openById(parentId);
+    let pSh = pSs.getSheetByName(parentTab) || pSs.insertSheet(parentTab);
+    
+    let targetCol = fixedCol;
+    if (!targetCol) {
+      // Determine Col A or Col B for File 1 sharding
+      const lenA = pSh.getRange("A:A").getValues().filter(String).length;
+      const lenB = pSh.getRange("B:B").getValues().filter(String).length;
+      targetCol = (lenA <= lenB) ? 1 : 2;
+    }
+    
+    pSh.getRange(pSh.getLastRow() + 1, targetCol).setValue(backupUrl);
+    SpreadsheetApp.flush();
+  }
+}
+
+/** 
+ * Internal Helper for Sharding
+ */
+function maintainTier(targetId, parentId, parentTab, colIndex, cellLimit) {
+  const ss = SpreadsheetApp.openById(targetId);
+  
+  // Logic: Max Rows * Max Columns = Physical footprint in Google Servers
+  const totalCells = ss.getSheets().reduce((sum, s) => sum + (s.getMaxRows() * s.getMaxColumns()), 0);
+
+  if (totalCells >= cellLimit) {
+    console.log("Healing initiated for ID: " + targetId);
+    
+    // 1. MAKE ARCHIVE COPY
+    const folder = DriveApp.getFolderById(STORAGE_CONFIG.ARCHIVE_FOLDER_ID);
+    const timeStamp = Utilities.formatDate(new Date(), "GMT+8", "yyyyMMdd_HHmmss");
+    const copy = DriveApp.getFileById(targetId).makeCopy("ARCHIVE_" + timeStamp + "_" + ss.getName(), folder);
+    const archiveUrl = copy.getUrl();
+
+    // 2. CLEAR ALL TABS IN CURRENT FILE (No Data remains, but Headers stay)
+    ss.getSheets().forEach(sh => {
+      const lastRow = sh.getLastRow();
+      if (lastRow > 1) {
+        // Clears from Row 2 down to protect headers
+        sh.getRange(2, 1, lastRow - 1, sh.getMaxColumns()).clearContent();
+      }
+      // CRITICAL: Shrink the sheet to 100 rows to reset the cell count officially
+      if (sh.getMaxRows() > 100) {
+        sh.deleteRows(101, sh.getMaxRows() - 100);
+      }
+    });
+
+    // 3. LOG TO PARENT
+    const parentSs = SpreadsheetApp.openById(parentId);
+    let parentSh = parentSs.getSheetByName(parentTab);
+    if (!parentSh) parentSh = parentSs.insertSheet(parentTab);
+
+    // Handle Col A or Col B requirement
+    const targetRow = parentSh.getLastRow() + 1;
+    parentSh.getRange(targetRow, colIndex).setValue(archiveUrl);
+    
+    SpreadsheetApp.flush();
+  }
+}
+
+/**
+ * Main authentication function
+ */
+function authenticateUser(c) {
+  const sh = SpreadsheetApp.openById(STORAGE_CONFIG.USER_DB_ID).getSheetByName(STORAGE_CONFIG.USER_TAB);
+  const data = sh.getDataRange().getDisplayValues();
+  const email = c.email.trim().toLowerCase();
+  const hash = generateSHA256(c.password, email);
+  const row = data.find(r => r[2].toLowerCase() === email && r[3] === hash);
+  
+  if (!row) throw new Error("Invalid credentials.");
+  if (row[6].toUpperCase() !== "APPROVED") throw new Error("Approval pending.");
+  if (row[7].toUpperCase() === "RESIGNED") throw new Error("Account deactivated.");
+
+  return { success: true, user: { fullName: row[1], email: row[2], role: row[4] } };
 }
 
 /**
@@ -74,40 +342,22 @@ function getActiveUserEmail() {
  * Logic: Checks if the account already exists before sending the code.
  */
 function sendVerificationCode(email) {
-  if (!email) throw new Error("Email address is required.");
-
-  const cleanEmail = email.trim().toLowerCase();
-  const ss = SpreadsheetApp.openById(USER_DB_ID);
-  const sheet = ss.getSheetByName(USER_TAB);
-  const data = sheet.getDataRange().getValues();
-
-  // Index 2 is USERNAME/EMAIL (Column C)
-  const alreadyExists = data.some((row) => String(row[2]).trim().toLowerCase() === cleanEmail);
-  if (alreadyExists) throw new Error("This email is already registered. Please proceed to Login.");
+  const sh = SpreadsheetApp.openById(STORAGE_CONFIG.USER_DB_ID).getSheetByName(STORAGE_CONFIG.USER_TAB);
+  const emailExists = sh.getRange("C:C").getValues().some(r => r[0].toString().toLowerCase() === email.toLowerCase());
+  if (emailExists) throw new Error("Email already exists.");
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const cache = CacheService.getScriptCache();
-  cache.put(cleanEmail, otp, 600); // 10 min expiry
-
-  try {
-    MailApp.sendEmail(cleanEmail, "Account Verification Code", "Your verification code is: " + otp);
-    return { success: true };
-  } catch (e) {
-    throw new Error("SMTP Error: Failed to deliver verification email.");
-  }
+  CacheService.getScriptCache().put(email.trim().toLowerCase(), otp, 600);
+  MailApp.sendEmail(email, "Registration OTP", "Code: " + otp);
+  return { success: true };
 }
 
 /**
  * Stage 2: OTP Validation
  */
-function verifyRegistrationCode(email, userCode) {
-  const cleanEmail = email.trim().toLowerCase();
-  const cache = CacheService.getScriptCache();
-  const storedCode = cache.get(cleanEmail);
-
-  if (!storedCode) throw new Error("Verification code expired.");
-  if (storedCode !== userCode) throw new Error("Incorrect verification code.");
-
+function verifyRegistrationCode(e, c) {
+  const v = CacheService.getScriptCache().get(e.trim().toLowerCase());
+  if (!v || v !== c) throw new Error("Invalid OTP.");
   return { success: true };
 }
 
@@ -115,320 +365,24 @@ function verifyRegistrationCode(email, userCode) {
  * Stage 3: Write Record with Gap-Filling
  * AUTOMATIC VALUES: USERNAME = Email, ACCESS LEVEL = Dynamic, STATUS = PENDING
  */
-function finalizeRegistration(formData) {
+function finalizeRegistration(f) {
   const lock = LockService.getScriptLock();
   try {
-    lock.waitLock(30000);
-    const ss = SpreadsheetApp.openById(USER_DB_ID);
-    let sheet = ss.getSheetByName(USER_TAB);
-
-    const timestamp = new Date();
-    const activeUser = formData.email.trim().toLowerCase();
-    const organicStatus = activeUser.includes("@megaworld-lifestyle.com") ? "ORGANIC" : "NON ORGANIC";
-
-    // Dynamic Access Title Logic
-    const accessLevel = formData.department === "PCU" ? "REQUESTOR" : "APPROVER";
-
-    // Encrypt Password
-    const encryptedPassword = generateSHA256(formData.password, activeUser);
-
-    const nameCol = sheet.getRange("B:B").getValues();
-    let targetRow = -1;
-    for (let i = 1; i < nameCol.length; i++) {
-      if (nameCol[i][0] === "" || nameCol[i][0] === null) {
-        targetRow = i + 1;
-        break;
-      }
-    }
-    if (targetRow === -1) targetRow = sheet.getLastRow() + 1;
-
-    // Expanded Payload to reach Columns J and K
+    lock.waitLock(15000);
+    const ss = SpreadsheetApp.openById(STORAGE_CONFIG.USER_DB_ID);
+    const sh = ss.getSheetByName(STORAGE_CONFIG.USER_TAB);
+    const activeUser = f.email.trim().toLowerCase();
+    
     const rowPayload = [
-      timestamp, 
-      safeValue(formData.fullName), 
-      activeUser, 
-      encryptedPassword,
-      accessLevel,            // Col E
-      organicStatus,          // Col F
-      "Pending",              // Col G
-      "",                     // Col H
-      "",                     // Col I (Blank Spacer)
-      safeValue(formData.department),     // Col J
-      safeValue(formData.jobDesignation)  // Col K
+      new Date(), safeValue(f.fullName), activeUser, generateSHA256(f.password, activeUser),
+      (f.department === "PCU" ? "REQUESTOR" : "APPROVER"),
+      (activeUser.includes("@megaworld-lifestyle.com") ? "ORGANIC" : "NON ORGANIC"),
+      "Pending", "", "", safeValue(f.department), safeValue(f.jobDesignation)
     ];
 
-    sheet.getRange(targetRow, 1, 1, rowPayload.length).setValues([rowPayload]);
-    return { success: true, message: "Registered under " + activeUser };
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-/**
- * SHA-256 Hashing Helper Function
- * Ensures registration and login encryption methods match.
- */
-function generateSHA256(input) {
-  const rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, input);
-  let txtHash = "";
-  for (let i = 0; i < rawHash.length; i++) {
-    let hashVal = rawHash[i];
-    if (hashVal < 0) hashVal += 256; 
-    if (hashVal.toString(16).length === 1) txtHash += "0";
-    txtHash += hashVal.toString(16);
-  }
-  return txtHash;
-}
-
-
-/**
- * Main authentication function
- */
-function authenticateUser(credentials) {
-  SpreadsheetApp.flush();
-  const ss = SpreadsheetApp.openById(USER_DB_ID);
-  const sheet = ss.getSheetByName(USER_TAB);
-  const data = sheet.getDataRange().getDisplayValues();
-  data.shift(); 
-
-  const inputEmail = String(credentials.email || "").trim().toLowerCase();
-  // SALT comparison must use the specific inputEmail
-  const hashedInputPass = generateSHA256(credentials.password, inputEmail); 
-
-  const userRow = data.find((row) => {
-    return String(row[2]).trim().toLowerCase() === inputEmail && String(row[3]).trim() === hashedInputPass;
-  });
-
-  if (!userRow) throw new Error("Invalid credentials.");
-
-  const permission = String(userRow[6]).toUpperCase();
-  const status = String(userRow[7]).toUpperCase();
-
-  if (permission !== "APPROVED") throw new Error("Access Denied: Pending admin approval.");
-  if (status === "RESIGNED") throw new Error("Access Denied: Account deactivated.");
-
-  return {
-    success: true,
-    user: { fullName: userRow[1], email: userRow[2], role: userRow[4] }
-  };
-}
-
-
-
-/**
- * ==========================================
- * RFP TRANSACTION & GENERATION (Spreadsheet)
- * ==========================================
- */
-var REGISTRY_SS_ID = "1YAvZmCdWXbjOcJA-uUY40e6qVqzyiHcB06NpiPcz6y4";
-var TAB_NAME = "autogenrfp";
-
-function generateRfpNumber() {
-  var lock = LockService.getPublicLock();
-  try {
-    // 1. Critical Section: Prevent concurrent executions
-    lock.waitLock(30000);
-
-    var ss = SpreadsheetApp.openById(REGISTRY_SS_ID);
-    var sheet = ss.getSheetByName(TAB_NAME);
-
-    if (!sheet) {
-      sheet = ss.insertSheet(TAB_NAME);
-      sheet.appendRow(["RFP Number", "Timestamp"]);
-    }
-
-    var data = sheet.getRange("A:A").getValues();
-    var lastRow = 0;
-    for (var i = data.length - 1; i >= 0; i--) {
-      if (data[i][0] != "") {
-        lastRow = i + 1;
-        break;
-      }
-    }
-    var nextSuffix = 1;
-
-    // 2. Determine Next Suffix (Continuous Sequence)
-    if (lastRow > 1) {
-      var lastRfpValue = sheet.getRange(lastRow, 1).getValue().toString();
-
-      // Use regex to find the last group of digits at the end of the string
-      // This ensures we get the counter even if the YYYY-MM prefix changes
-      var match = lastRfpValue.match(/(\d+)$/);
-      if (match) {
-        nextSuffix = parseInt(match[1], 10) + 1;
-      }
-    }
-
-    // 3. Get Current Date in Philippine Time (GMT+8)
-    var now = new Date();
-    var yearMonth = Utilities.formatDate(now, "GMT+8", "yyyy-MM");
-
-    // Generate RFP ID: MALL-YYYY-MM-000000X
-    var newRfp = "MALL-" + yearMonth + "-" + ("0000000" + nextSuffix).slice(-7);
-
-    // 4. Deduplication Check: Search Column A for the new ID
-    var range = sheet.getRange("A:A");
-    var duplicate = range.createTextFinder(newRfp).matchEntireCell(true).findNext();
-
-    if (duplicate) {
-      console.warn("Duplicate detected for " + newRfp + ". Incrementing sequence...");
-      // Increment suffix and try again to avoid recursion depth issues
-      nextSuffix++;
-      newRfp = "MALL-" + yearMonth + "-" + ("0000000" + nextSuffix).slice(-7);
-    }
-
-    // 5. Persistence
-    sheet.appendRow([newRfp, now]);
-
-    // 6. Force write to DB before releasing lock
-    SpreadsheetApp.flush();
-
-    return newRfp;
-  } catch (e) {
-    console.error("Error generating RFP: " + e.toString());
-    throw new Error("Failed to generate RFP Number: " + e.message);
-  } finally {
-    if (lock.hasLock()) {
-      lock.releaseLock();
-    }
-  }
-}
-
-/** 
- * UPDATED: Fetches Filename, Tab, and URL
- */
-function getSourceFileNames() {
-  const MASTER_ID = "10p-nv_qAN0GzZHAVInyb9_bprk2_sLf08190qdMf8Mc";
-  const ss = SpreadsheetApp.openById(MASTER_ID);
-  const sheet = ss.getSheetByName("SOURCEFILES");
-
-  if (!sheet) throw new Error("Sheet 'SOURCEFILES' not found.");
-
-  const data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return [];
-
-  const headers = data.shift().map((h) => h.toString().trim().toUpperCase());
-
-  // Indices
-  let nameColIdx = headers.indexOf("FILE NAME");
-  let tabColIdx = headers.indexOf("TAB NAME");
-  let urlColIdx = headers.indexOf("FILE URL"); // Retrieve URL Column
-
-  const fileData = data
-    .map((row) => {
-      return {
-        fileName: row[nameColIdx] ? row[nameColIdx].toString().trim() : "",
-        tabName: row[tabColIdx] ? row[tabColIdx].toString().trim() : "",
-        fileUrl: row[urlColIdx] ? row[urlColIdx].toString().trim() : "" // Captured here
-      };
-    })
-    .filter((item) => item.fileName !== "");
-
-  return fileData;
-}
-
-/**
- * Unified Advanced Search used by the "Search" button in UI
- */
-function getRfpDataAdvanced(sourceFile, rfpInput, invoiceInput) {
-  try {
-    const result = performStrictSearch(sourceFile, rfpInput, invoiceInput);
-
-    if (result.length > 0) {
-      // 1. Check if the FIRST match is already PAID
-      // (Assumption: if one matches and is PAID, the record is locked)
-      const currentStatus = String(result[0]["GENERAL STATUS"] || "")
-        .trim()
-        .toUpperCase();
-
-      if (currentStatus === "PAID") {
-        return {
-          status: "ALREADY_PAID",
-          message: "The record found (" + (rfpInput || invoiceInput) + ") is already marked as PAID.",
-        };
-      }
-
-      // 2. Return data if allowed
-      return {
-        status: "FOUND",
-        data: result,
-      };
-    }
-
-    return { status: "NOT_FOUND" };
-  } catch (e) {
-    throw new Error("Search logic failed: " + e.message);
-  }
-}
-
-function performStrictSearch(selectedSource, rfpInput, invoiceInput) {
-  const rfpClean = String(rfpInput || "")
-    .trim()
-    .toUpperCase();
-  const invClean = String(invoiceInput || "")
-    .trim()
-    .toUpperCase();
-
-  const MASTER_ID = "10p-nv_qAN0GzZHAVInyb9_bprk2_sLf08190qdMf8Mc";
-  const indexSheet = SpreadsheetApp.openById(MASTER_ID).getSheetByName("SOURCEFILES");
-  const indexData = indexSheet.getDataRange().getValues();
-  const indexHeaders = indexData.shift().map((h) => h.toString().trim().toUpperCase());
-
-  const urlColIdx = indexHeaders.indexOf("FILE URL");
-  const tabColIdx = indexHeaders.indexOf("TAB NAME");
-  let nameColIdx = indexHeaders.indexOf("FILE NAME");
-  if (nameColIdx === -1) nameColIdx = 0;
-
-  const sourceRow = indexData.find(
-    (row) => row[nameColIdx].toString().trim().toUpperCase() === selectedSource.toUpperCase()
-  );
-
-  if (!sourceRow) return [];
-
-  const targetSs = SpreadsheetApp.openByUrl(sourceRow[urlColIdx]);
-  const tz = targetSs.getSpreadsheetTimeZone();
-  const tabs = sourceRow[tabColIdx]
-    .toString()
-    .split(",")
-    .map((t) => t.trim());
-
-  let matches = [];
-
-  tabs.forEach((tabName) => {
-    const sheet = targetSs.getSheetByName(tabName);
-    if (!sheet) return;
-
-    const data = sheet.getRange(5, 1, sheet.getLastRow() - 4, sheet.getLastColumn()).getValues();
-    const headers = data[0].map((h) => h.toString().trim().toUpperCase());
-
-    const rfpIdx = headers.indexOf("RFP|PEF NO.");
-    const invIdx = headers.indexOf("INVOICE NO.");
-
-    for (let r = 1; r < data.length; r++) {
-      const row = data[r];
-      const rfpVal = String(row[rfpIdx] || "")
-        .trim()
-        .toUpperCase();
-      const invVal = String(row[invIdx] || "")
-        .trim()
-        .toUpperCase();
-
-      let isMatch = false;
-      if (rfpClean && rfpVal === rfpClean) isMatch = true;
-      else if (invClean && invVal === invClean) isMatch = true;
-
-      if (isMatch) {
-        let record = {};
-        headers.forEach((h, idx) => {
-          let val = row[idx];
-          record[h || "COL_" + idx] = val instanceof Date ? Utilities.formatDate(val, tz, "yyyy-MM-dd") : val;
-        });
-        matches.push(record);
-      }
-    }
-  });
-
-  return matches;
+    sh.appendRow(rowPayload);
+    return { success: true };
+  } finally { lock.releaseLock(); }
 }
 
 /**
@@ -485,10 +439,10 @@ function submitPasswordReset(email, newPassword) {
     const ss = SpreadsheetApp.openById(USER_DB_ID);
     const sheet = ss.getSheetByName(USER_TAB);
     const data = sheet.getDataRange().getDisplayValues();
-    
+
     let rowIndex = -1;
     const cleanEmail = email.toString().trim().toLowerCase();
-    
+
     // Salted with user email
     const hashedNewPassword = generateSHA256(newPassword, cleanEmail);
 
@@ -510,105 +464,274 @@ function submitPasswordReset(email, newPassword) {
 }
 
 /**
- * PROCESS SUBMISSION - Optimized for Data Integrity & Specific Error Messaging
+ * REPLACEMENT: isRfpUnique
+ * Checks the UNIQUE_REGISTRY tab inside the current Master Shard.
+ */
+function isRfpUnique(rfpNo) {
+  if (!rfpNo || rfpNo === "" || rfpNo === "N/A") return true;
+  const val = rfpNo.toString().trim().toUpperCase();
+
+  // Tier 1: Anti-collision lock (Script cache)
+  if (CacheService.getScriptCache().get("processing_" + val)) return false;
+
+  // Tier 2: Check ONLY inside the Master Shard resolved from the relay
+  const liveMasterId = getLiveMasterId(); 
+  const masterSs = SpreadsheetApp.openById(liveMasterId);
+  const sh = masterSs.getSheetByName("UNIQUE_REGISTRY");
+
+  if (!sh) return true; // If no registry yet, it's unique
+
+  // High speed search in the sharded file
+  const finder = sh.getRange("A:A").createTextFinder(val).matchEntireCell(true).findNext();
+  return finder ? false : true;
+}
+
+/**
+ * REPLACEMENT: commitRfpToRegistry
+ * Writes success identifiers ONLY into the sharded Master file, 
+ * NOT into the File 3 Registry Anchor.
+ */
+function commitRfpToRegistry(rfpNo) {
+  if (!rfpNo || rfpNo === "" || rfpNo === "N/A") return;
+  const idValue = rfpNo.toString().trim().toUpperCase();
+
+  // Find where the Master currently is (from File 3 relay)
+  const liveMasterId = getLiveMasterId(); 
+  const masterSs = SpreadsheetApp.openById(liveMasterId);
+  
+  // Resolve UNIQUE_REGISTRY inside the SHARDED Master file
+  let sh = masterSs.getSheetByName("UNIQUE_REGISTRY");
+  if (!sh) {
+    sh = masterSs.insertSheet("UNIQUE_REGISTRY").appendRow(["Identifier", "Timestamp"]);
+  }
+
+  sh.appendRow([idValue, new Date()]);
+  
+  // Clear the in-memory processing lock
+  CacheService.getScriptCache().remove("processing_" + idValue);
+  SpreadsheetApp.flush();
+}
+/**
+ * ==========================================
+ * RFP TRANSACTION & GENERATION (Spreadsheet)
+ * ==========================================
+ */
+//var REGISTRY_SS_ID = "1YAvZmCdWXbjOcJA-uUY40e6qVqzyiHcB06NpiPcz6y4";
+//var TAB_NAME = "autogenrfp";
+function generateRfpNumber() {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    const ss = SpreadsheetApp.openById(STORAGE_CONFIG.MASTER_LOG_ID);
+    let counterSh = ss.getSheetByName("GLOBAL_COUNTER") || ss.insertSheet("GLOBAL_COUNTER");
+    if (counterSh.getLastRow() === 0) counterSh.appendRow(["Sequence", 0]);
+    const nextSeq = (parseInt(counterSh.getRange("B1").getValue()) || 0) + 1;
+    counterSh.getRange("B1").setValue(nextSeq);
+    return "MALL-" + Utilities.formatDate(new Date(), "GMT+8", "yyyy-MM") + "-" + ("0000000" + nextSeq).slice(-7);
+  } finally { lock.releaseLock(); }
+}
+
+/**
+ * REPLACEMENT FOR: processSubmission (Lines 492-563)
+ * Reordered for Transaction Integrity: Heavy logic first, Data Write last.
+ */
+/**
+ * PROCESS SUBMISSION - FULL VERSION
+ * Implements: 
+ * 1. App User Identity Tracking (Payload-based)
+ * 2. Mandatory Attachment Notes Validation
+ * 3. 500-character Remarks Logic
+ * 4. Multi-layered Transaction Security (Locks, Cache, Sharding)
  */
 function processSubmission(p) {
-  const lock = LockService.getPublicLock();
-  const SS_ID = "1YAvZmCdWXbjOcJA-uUY40e6qVqzyiHcB06NpiPcz6y4";
-  const FOLDER_ID = "1eFcLGXPEnUSi14aPvvA9m2ATV8Racsuf";
-  const MAX_CELL_LIMIT = 9800000;
+  const lock = LockService.getScriptLock();
+  
+  // SECURE LOCK: Prevent concurrent write collisions (Wait up to 45 seconds)
+  if (!lock.tryLock(45000)) {
+    throw new Error("SYSTEM_BUSY: The database is currently being updated by another user. Please try again in a moment.");
+  }
 
   try {
-    if (!lock.tryLock(30000)) throw new Error("Server Timeout: The database is busy. Please wait a moment and try again.");
-
-    // 1. Identity Verification (Server-Side Truth)
-    const authEmail = Session.getActiveUser().getEmail().toLowerCase().trim();
-    if (!authEmail) throw new Error("Security Alert: We could not identify your Google account. Please reload the app.");
-
-    // 2. Data Validation & Formatting
-    const rfpNo = p.header.rfpNo ? p.header.rfpNo.toString().trim() : "";
-    const invNo = p.header.invoiceNo ? p.header.invoiceNo.toString().trim() : "";
-    const identifier = rfpNo || invNo;
-
-    if (!invNo) throw new Error("Input Required: An Invoice Number is mandatory for recording.");
-    if (!p.attachment || !p.attachment.base64) throw new Error("Attachment Missing: You must upload a supporting PDF.");
-
-    const ss = SpreadsheetApp.openById(SS_ID);
-    const sh = ss.getSheetByName("SUBMISSIONS");
-
-    // 3. System Limits Check
-    const totalCells = ss.getSheets().reduce((sum, s) => sum + (s.getMaxRows() * s.getMaxColumns()), 0);
-    if (totalCells >= MAX_CELL_LIMIT) throw new Error("Database Full: System cell limit (10M) approaching. Please archive old transactions.");
-
-    // 4. Primary/Secondary Conflict Logic
-    const primaryEmails = p.participants.filter(x => x.tag === "Primary").map(x => x.email.toLowerCase().trim());
-    const secondaryRaw = p.participants.filter(x => x.tag === "Secondary").map(x => x.email.toLowerCase().trim());
+    // 1. DATA INITIALIZATION & IDENTITY SECURITY
+    const rfpNo = p.header.rfpNo ? p.header.rfpNo.toString().trim().toUpperCase() : "";
     
-    // Server-side guard against overlaps
-    const overlapEmails = secondaryRaw.filter(email => primaryEmails.includes(email));
-    if (overlapEmails.length > 0) throw new Error("Duplicate Roles: The email(s) " + overlapEmails.join(", ") + " are set as both Primary AND Secondary. This is not allowed.");
+    // IDENTITY: Use the email from the App Login state, not the Google account session
+    const submissionEmail = p.userAppEmail ? p.userAppEmail.toLowerCase().trim() : "anonymous_app_user";
 
-    // 5. RFP Duplicate Check
+    // REMARKS: Truncate to 500 characters max for database safety
+    let remarks = p.header.remarks ? p.header.remarks.toString().trim() : "";
+    if (remarks.length > 500) remarks = remarks.substring(0, 500);
+
+     // If user didn't pick a source file (manual generation), we force "N/A"
+    const sourceFileName = p.header.sourceFileName && p.header.sourceFileName.trim() !== "" ? p.header.sourceFileName.trim() : "N/A";
+    
+    const sourceTabName = p.header.sourceTabName && p.header.sourceTabName.trim() !== "" ? p.header.sourceTabName.trim() : "N/A";
+
+    // 2. TRANSACTIONAL SECURITY (Debouncing & Duplicates)
+    if (rfpNo !== "" && !isRfpUnique(rfpNo)) {
+      throw new Error("ALREADY RECORDED: This RFP No. (" + rfpNo + ") is already in the registry.");
+    }
+    
     if (rfpNo !== "") {
-      const existingRfp = sh.getRange("F:F").createTextFinder(rfpNo).matchEntireCell(true).findNext();
-      if (existingRfp) throw new Error("Transaction Already Exists: RFP No '" + rfpNo + "' was previously submitted.");
+       const cache = CacheService.getScriptCache();
+       if (cache.get("processing_" + rfpNo)) {
+         throw new Error("SUBMISSION_IN_PROGRESS: This transaction is already being processed.");
+       }
+       cache.put("processing_" + rfpNo, "true", 120); // Debounce for 2 minutes
     }
 
-    // 6. Drive & Folder Scoping
-    const folder = DriveApp.getFolderById(FOLDER_ID);
+    const activeDbId = getActiveDatabaseId(); // Retrieve ID from configuration or sharding logic
 
-    // Secure Support Upload
-    let supportUrl = "";
-    try {
-      const blob = Utilities.newBlob(Utilities.base64Decode(p.attachment.base64), "application/pdf", safeValue(identifier) + "_Support.pdf");
+    // 3. FILE ATTACHMENTS (Enforcing Mandatory Notes)
+    const folder = DriveApp.getFolderById(STORAGE_CONFIG.ATTACHMENT_FOLDER_ID);
+    let attachmentSummary = [];
+
+    if (!p.attachments || p.attachments.length === 0) {
+      throw new Error("ATTACHMENT_REQUIRED: At least one PDF supporting document is required.");
+    }
+
+    p.attachments.forEach((f, i) => {
+      // MANDATORY NOTE CHECK (Backend enforcement)
+      const fileNote = f.notes ? f.notes.trim() : "";
+      if (!fileNote) {
+        throw new Error(`MISSING_NOTE: File #${i + 1} (${f.name}) is missing the required description/note.`);
+      }
+
+      // Uploading and setting permissions
+      const blob = Utilities.newBlob(Utilities.base64Decode(f.base64), "application/pdf", `${rfpNo}_FILE_${i + 1}.pdf`);
       const file = folder.createFile(blob);
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.NONE); 
-      supportUrl = file.getUrl();
-    } catch (driveErr) {
-      throw new Error("File Upload Failed: System couldn't save to the designated folder. Please check your Drive space.");
-    }
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.NONE);
+      
+      // Formatting the cell content: [NOTE] : URL
+      attachmentSummary.push(`[${fileNote.toUpperCase()}] : ${file.getUrl()}`);
+    });
 
-    // Secure RFP Auto-Gen
-    const rfpCopyUrl = createRfpPdf(p, folder);
+    // 4. GENERATE SYSTEM PDF (The Official RFP Snapshot)
+    const snapshotUrl = createRfpPdf(p, folder);
 
-    // 7. Field Mapping with Sanitization
+    // 5. DATA PREPARATION (Particulars Mapping & Type Conversion)
+    const sh = SpreadsheetApp.openById(activeDbId).getSheetByName("SUBMISSIONS") || 
+               SpreadsheetApp.openById(activeDbId).insertSheet("SUBMISSIONS");
+    
     let parts = {};
     p.tableFields.forEach(f => {
       let v = p.particulars[f] || "";
-      if (f.toUpperCase().includes("AMOUNT")) v = parseFloat(v.toString().replace(/[^0-9.-]/g, "")) || 0;
-      else v = safeValue(v); 
-      parts[f] = v;
+      // Financial Sanitization: Remove formatting for clean numbers in DB
+      parts[f] = f.toUpperCase().includes("AMOUNT") 
+                 ? (parseFloat(v.toString().replace(/[^0-9.-]/g, "")) || 0) 
+                 : (v === null || v === undefined ? "" : v.toString().trim());
     });
 
-    const finalRow = [
-      "TXN-" + Utilities.getUuid().split("-")[0].toUpperCase(), 
-      new Date(), 
-      authEmail, 
-      primaryEmails.join(", "), 
-      secondaryRaw.join(", "), // Safe as it was de-duplicated from primary above
-      safeValue(rfpNo || "N/A"), 
-      safeValue(p.header.dueDate || "N/A"),
-      parts["YEAR"], parts["MONTH"], parts["PAYOR NAME"], parts["PAYEE NAME"],
-      parts["PROPERTY"], parts["LOCATION"], parts["SECTOR"], parts["KINDS OF SERVICE"],
-      parts["CONTRACT NO"], parts["CONTRACT AMOUNT"],
-      safeValue(invNo), 
-      parts["BILLING PERIOD"], parts["SOA AMOUNT"], parts["GENERAL STATUS"],
-      supportUrl, 
-      rfpCopyUrl, 
-      safeValue(p.header.sourceFileName || "No Reference File"), 
-      safeValue(p.header.sourceTabName || "N/A")
+    const primaryRecipients = p.participants.filter(x => x.tag === "Primary").map(x => x.email).join(", ");
+    const secondaryRecipients = p.participants.filter(x => x.tag === "Secondary").map(x => x.email).join(", ");
+
+    // 6. FINAL ROW MAPPING (Matches your database column architecture)
+    const rowData = [
+      "TXN-" + Utilities.getUuid().split("-")[0].toUpperCase(), // Col 1: System TXN ID
+      new Date(),                                              // Col 2: Processing Date
+      submissionEmail,                                         // Col 3: APP LOGGED-IN USER (Updated)
+      primaryRecipients,                                       // Col 4: Primary To
+      secondaryRecipients,                                     // Col 5: CC Emails
+      rfpNo || "N/A",                                          // Col 6: RFP Number
+      p.header.dueDate,                                        // Col 7: Deadline
+      parts["YEAR"],                                           // Col 8
+      parts["MONTH"],                                          // Col 9
+      parts["PAYOR NAME"],                                     // Col 10
+      parts["PAYEE NAME"],                                     // Col 11
+      parts["PROPERTY"],                                       // Col 12
+      parts["LOCATION"],                                       // Col 13
+      parts["SECTOR"],                                         // Col 14
+      parts["KINDS OF SERVICE"],                               // Col 15
+      parts["CONTRACT NO"],                                    // Col 16
+      parts["CONTRACT AMOUNT"],                                // Col 17 (Clean Number)
+      p.header.invoiceNo,                                      // Col 18
+      parts["BILLING PERIOD"],                                 // Col 19
+      parts["SOA AMOUNT"],                                     // Col 20 (Clean Number)
+      parts["GENERAL STATUS"],                                 // Col 21
+      attachmentSummary.join("\n"),                            // Col 22: Linked PDF Array with Mandatory Notes
+      snapshotUrl,                                             // Col 23: PDF Receipt Link
+      remarks,                                                 // Col 24: PURPOSE / REMARKS (New 500 Char)
+      sourceFileName, // Uses the sanitized variable (Col 25)
+      sourceTabName   // Uses the sanitized variable (Col 26)
+
     ];
 
-    sh.appendRow(finalRow);
+    // Commit to Google Sheets
+    sh.appendRow(rowData);
+    
+    // Trigger downstream processes (Registry update & caching)
+    commitRfpToRegistry(rfpNo);
+    
+    // Ensure all data is written before releasing the script lock
     SpreadsheetApp.flush();
+    
+    return { success: true, message: rfpNo || "Submission Successful" };
 
-    return { success: true, message: identifier };
-
-  } catch (e) {
-    return { success: false, message: e.message };
-  } finally {
-    if (lock.hasLock()) lock.releaseLock();
+  } catch (err) {
+    console.error("Critical ProcessSubmission Error: " + err.message);
+    return { success: false, message: err.message || err.toString() };
+  } finally { 
+    // Always release the lock, even if the script failed
+    if (lock.hasLock()) lock.releaseLock(); 
   }
+}
+/** 
+ * UPDATED: Fetches Filename, Tab, and URL
+ */
+function getSourceFileNames() {
+  const data = SpreadsheetApp.openById("10p-nv_qAN0GzZHAVInyb9_bprk2_sLf08190qdMf8Mc").getSheetByName("SOURCEFILES").getDataRange().getValues();
+  data.shift();
+  return data.map(r => ({ fileName: r[0], tabName: r[1], fileUrl: r[2] })).filter(x => x.fileName);
+}
+
+/**
+ * Unified Advanced Search used by the "Search" button in UI
+ */
+
+function getRfpDataAdvanced(source, rfp, inv) {
+  const result = performStrictSearch(source, rfp, inv);
+  if (!result.length) return { status: "NOT_FOUND" };
+  const status = String(result[0]["GENERAL STATUS"] || "").toUpperCase();
+  if (status === "PAID") return { status: "ALREADY_PAID" };
+  return { status: "FOUND", data: result };
+}
+
+function performStrictSearch(selectedSource, rfpInput, invoiceInput) {
+  const term = (rfpInput || invoiceInput).trim().toUpperCase();
+  if (!term) return [];
+
+  // Metadata Lookup
+  const indexSs = SpreadsheetApp.openById("10p-nv_qAN0GzZHAVInyb9_bprk2_sLf08190qdMf8Mc");
+  const indexData = indexSs.getSheetByName("SOURCEFILES").getDataRange().getValues();
+  const meta = indexData.find(r => r[0].toString().trim().toUpperCase() === selectedSource.toUpperCase());
+  if (!meta) return [];
+
+  const targetSs = SpreadsheetApp.openByUrl(meta[2]);
+  const tabs = meta[1].toString().split(",").map(t => t.trim());
+  let matches = [];
+
+  tabs.forEach(tabName => {
+    const sh = targetSs.getSheetByName(tabName);
+    if (!sh) return;
+    
+    // SERVER-SIDE SEARCH (High Speed)
+    const finder = sh.createTextFinder(term).matchEntireCell(true).findAll();
+    if (!finder.length) return;
+
+    // Headers located at Row 5
+    const headers = sh.getRange(5, 1, 1, sh.getLastColumn()).getValues()[0].map(h => h.toString().toUpperCase());
+    
+    finder.forEach(res => {
+      const rowVal = sh.getRange(res.getRow(), 1, 1, sh.getLastColumn()).getValues()[0];
+      let record = {};
+      headers.forEach((h, i) => {
+        let v = rowVal[i];
+        record[h || "COL_"+i] = (v instanceof Date) ? Utilities.formatDate(v, "GMT+8", "yyyy-MM-dd") : v;
+      });
+      matches.push(record);
+    });
+  });
+  return matches;
 }
 
 /**
@@ -719,51 +842,51 @@ function createRfpPdf(p, folder) {
   // Create PDF
   const pdfBlob = Utilities.newBlob(html, "text/html").getAs("application/pdf").setName(`RFP_${p.header.rfpNo}.pdf`);
   const file = folder.createFile(pdfBlob);
-  
+
   // Set explicit security permissions
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.NONE);
-  
+
   return file.getUrl();
 }
 
 /**
- * Backend: Retrieves suggestions for the email search list.
+ * REPLACEMENT: getPreviousParticipantEmails
+ * Loophole Fix: Scans archives listed in MASTER_LOG so suggestions don't "reset."
  */
 function getPreviousParticipantEmails() {
-  const SS_ID = "1YAvZmCdWXbjOcJA-uUY40e6qVqzyiHcB06NpiPcz6y4";
-  try {
-    const sh = SpreadsheetApp.openById(SS_ID).getSheetByName("SUBMISSIONS");
-    if (!sh) throw new Error("Data retrieval source (SUBMISSIONS) not found.");
-
-    const lastRow = sh.getLastRow();
-    if (lastRow < 2) return [];
-
-    const data = sh.getRange(2, 4, lastRow - 1, 2).getValues(); 
-    const results = new Set();
-    
-    data.forEach(row => {
-      row.forEach(cell => {
-        if (cell && cell.toString().includes("@")) {
-          cell.toString().split(",").forEach(email => {
-            const clean = email.trim().toLowerCase();
-            if (clean) results.add(clean);
-          });
-        }
-      });
+  const masterLog = SpreadsheetApp.openById(STORAGE_CONFIG.MASTER_LOG_ID).getSheetByName("DATABASES_ARCHIVES");
+  const results = new Set();
+  
+  let scanList = [STORAGE_CONFIG.PRIMARY_DB_ID];
+  if (masterLog) {
+    const archives = masterLog.getRange("A:A").getValues().filter(String).flat().slice(-3); // Get latest 3 archive shards
+    archives.forEach(url => {
+       const m = url.match(/[-\w]{25,}/);
+       if (m) scanList.push(m[0]);
     });
-
-    return Array.from(results).sort();
-  } catch (e) {
-    throw new Error("System Suggestion Failure: " + e.message);
   }
+
+  scanList.forEach(id => {
+    try {
+      const sh = SpreadsheetApp.openById(id).getSheetByName("SUBMISSIONS");
+      if (!sh) return;
+      const data = sh.getRange(2, 4, Math.min(sh.getLastRow() - 1, 300), 2).getValues();
+      data.forEach(r => r.forEach(cell => {
+        if (cell && cell.includes("@")) cell.split(",").forEach(em => results.add(em.trim().toLowerCase()));
+      }));
+    } catch(e) {}
+  });
+
+  return Array.from(results).sort();
 }
+
 /**
  * Frontend: addSecondaryRecipient
  * Blocks addition if already in Primary list or invalid.
  */
 function addSecondaryRecipient(emailToVerify) {
   const cleanEmail = emailToVerify.trim().toLowerCase();
-  
+
   if (!cleanEmail.includes("@") || !cleanEmail.includes(".")) {
     Swal.fire("Invalid Format", "The entry '" + cleanEmail + "' does not appear to be a valid email address.", "error");
     return;
@@ -785,5 +908,12 @@ function addSecondaryRecipient(emailToVerify) {
   if (formState.participants.some(p => p.email.toLowerCase() === cleanEmail && p.tag === "Secondary")) return;
 
   // Function from your existing logic to add pill to UI
-  addParticipant(cleanEmail, "Secondary"); 
+  addParticipant(cleanEmail, "Secondary");
+}
+
+function emergencyClearCache() {
+  const cache = CacheService.getScriptCache();
+  // Add the IDs of the files that keep sharding here
+  cache.remove("shard_full_1YAvZmCdWXbjOcJA-uUY40e6qVqzyiHcB06NpiPcz6y4"); 
+  console.log("Cache cleared. Try submitting now.");
 }
