@@ -359,7 +359,7 @@
                             name="email"
                             class="form-control form-control-lg bg-light border-0 shadow-sm"
                             v-model="credentials.email"
-                            placeholder="example@gmail.com"
+                            placeholder="example@megaworld-lifestyle.com"
                             autocomplete="username email"
                             list="emailHistory"
                             required>
@@ -503,7 +503,7 @@
                     <input type="email"
                            class="form-control border-start-0 ps-0 bg-white"
                            v-model="form.email"
-                           placeholder="Enter your email address">
+                           placeholder="example@megaworld-lifestyle.com">
                 </div>
                 <button class="btn btn-primary btn-lg w-100 fw-bold shadow-sm"
                         @click="requestOtp"
@@ -1125,6 +1125,13 @@
         border: 2px dashed #dc3545 !important;
         background-color: #fff5f5 !important;
       }
+
+      .spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.15em;
+    vertical-align: middle;
+}
     </style>
 
     <div class="form-request-container animation-fade-in" id="printable-area">
@@ -1168,23 +1175,46 @@
                         </div>
                     </div>
 
-                    <!-- RFP and Search -->
-                    <div class="col-md-5">
-                      <label class="form-label fw-bold text-secondary small text-uppercase">RFP NO. <span class="text-danger">*</span></label>
-                      <div class="input-group shadow-sm">
-                          <input type="text" class="form-control bg-light" :class="{'is-invalid': showErrors && !header.rfpNo}" v-model="header.rfpNo" placeholder="Input RFP No">
-                          <button class="btn btn-primary" type="button" @click="fetchDataBySearch" :disabled="!header.sourceFileName"><i class="bi bi-search"></i></button>
-                          <button class="btn btn-outline-primary" type="button" @click="generateRfp"><i class="bi bi-magic"></i> Generate</button>
-                      </div>
-                    </div>
+                    <!-- RFP Section -->
+                      <div class="col-md-5">
+                        <label class="form-label fw-bold text-secondary small text-uppercase">RFP NO. <span class="text-danger">*</span></label>
+                        <div class="input-group shadow-sm">
+                            <input type="text" class="form-control bg-light" 
+                                :class="{'is-invalid': showErrors && !header.rfpNo}" 
+                                v-model="header.rfpNo" 
+                                @input="submissionMode = 'MANUAL'"
+                                placeholder="Input RFP No" :disabled="isSubmitting">
+                            
+                            <!-- RFP Search Button: Disabled if Generated -->
+                            <button class="btn btn-primary" type="button" 
+                                @click="fetchDataBySearch('RFP')" 
+                                :disabled="!header.sourceFileName || submissionMode === 'GENERATED' || !header.rfpNo">
+                                <i class="bi bi-search"></i>
+                            </button>
 
-                    <div class="col-md-4">
-                      <label class="form-label fw-bold text-secondary small text-uppercase">Invoice No. <span class="text-danger">*</span></label>
-                      <div class="input-group shadow-sm">
-                          <input type="text" class="form-control bg-light" :class="{'is-invalid': showErrors && !header.invoiceNo}" v-model="header.invoiceNo" placeholder="Input Invoice No">
-                          <button class="btn btn-primary" type="button" @click="fetchDataBySearch" :disabled="!header.sourceFileName"><i class="bi bi-search"></i></button>
+                            <button class="btn btn-outline-primary" type="button" @click="generateRfp" :disabled="isSubmitting">
+                                <i class="bi bi-magic"></i> Generate
+                            </button>
+                        </div>
+                        <small v-if="submissionMode === 'GENERATED'" class="text-info font-monospace" style="font-size: 0.7rem;">
+                            <i class="bi bi-lock-fill"></i> Generated ID (Searching disabled)
+                        </small>
                       </div>
-                    </div>
+
+                      <!-- Invoice Section -->
+                      <div class="col-md-4">
+                        <label class="form-label fw-bold text-secondary small text-uppercase">Invoice No. <span class="text-danger">*</span></label>
+                        <div class="input-group shadow-sm">
+                            <input type="text" class="form-control bg-light" :class="{'is-invalid': showErrors && !header.invoiceNo}" v-model="header.invoiceNo" placeholder="Input Invoice No">
+                            
+                            <!-- Invoice Search Button: Always active if Source is selected -->
+                            <button class="btn btn-primary" type="button" 
+                                @click="fetchDataBySearch('INVOICE')" 
+                                :disabled="!header.sourceFileName || !header.invoiceNo">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                      </div>
 
                     <div class="col-md-3">
                         <label class="form-label fw-bold text-secondary small text-uppercase">Due Date <span class="text-danger">*</span></label>
@@ -1197,10 +1227,10 @@
                     <h5 class="fw-bold mb-4 text-primary border-bottom pb-2"><i class="bi bi-info-circle-fill me-2"></i> PARTICULARS DETAILS</h5>
                     
                     <div class="row g-4">
-                        <!-- Group 1: Entities -->
+                         <!-- Group 1: Entities -->
                         <div class="col-md-6">
                             <div class="p-3 border rounded bg-white shadow-sm h-100">
-                                <p class="small fw-bold text-primary text-uppercase mb-3 border-bottom">Property Information</p>
+                                <!-- <p class="small fw-bold text-primary text-uppercase mb-3 border-bottom">Property Information</p> -->
                                 <div class="row g-2">
                                     <div class="col-12">
                                         <label class="form-label small fw-bold text-muted text-uppercase">Payor Name <span class="text-danger">*</span></label>
@@ -1225,7 +1255,7 @@
                         <!-- Group 2: Financials -->
                         <div class="col-md-6">
                             <div class="p-3 border rounded bg-light shadow-sm h-100">
-                                <p class="small fw-bold text-primary text-uppercase mb-3 border-bottom">Financials & Status</p>
+                                <!-- <p class="small fw-bold text-primary text-uppercase mb-3 border-bottom">Financials & Status</p> -->
                                 <div class="row g-2">
                                     <div class="col-md-6">
                                         <label class="form-label small fw-bold text-muted text-uppercase">Contract Amount <span class="text-danger">*</span></label>
@@ -1254,7 +1284,7 @@
                         <!-- Group 3: Details -->
                         <div class="col-12">
                             <div class="p-3 border rounded bg-white shadow-sm">
-                                <p class="small fw-bold text-primary text-uppercase mb-3 border-bottom">Billing & Service Period</p>
+                               <!-- <p class="small fw-bold text-primary text-uppercase mb-3 border-bottom">Billing & Service Period</p> -->
                                 <div class="row g-3">
                                     <div class="col-md-2">
                                         <label class="form-label small fw-bold text-muted text-uppercase">Year <span class="text-danger">*</span></label>
@@ -1281,11 +1311,86 @@
                         </div>
                     </div>
 
+                    <!-- Purpose / Remarks Field -->
+                      <div class="mt-4">
+                          <label class="form-label fw-bold text-secondary small text-uppercase">
+                              Purpose / Additional Remarks <span class="text-muted">(Max 500 characters)</span>
+                          </label>
+                          <textarea 
+                              class="form-control bg-light shadow-sm" 
+                              v-model="header.remarks" 
+                              rows="3" 
+                              maxlength="500"
+                              placeholder="Enter details regarding the purpose of this payment request..."
+                              style="resize: none;"
+                              :class="{'is-invalid': showErrors && header.remarks && header.remarks.length > 500}"
+                          ></textarea>
+                          <div class="d-flex justify-content-end mt-1">
+                              <small :class="header.remarks.length >= 450 ? 'text-danger fw-bold' : 'text-muted'">
+                                  {{ header.remarks.length }}/500 characters
+                              </small>
+                          </div>
+                      </div>
                     <!-- File Upload Section -->
-                    <div class="mt-5 p-4 border-2 border-dashed rounded" :class="{'bg-danger-subtle-border': showErrors && !attachment.base64, 'bg-light': !(showErrors && !attachment.base64)}">
-                        <label class="form-label fw-bold d-block mb-3"><i class="bi bi-paperclip text-primary me-2"></i> Upload PRF (PDF) <span class="text-danger">*</span></label>
-                        <input type="file" class="form-control" :class="{'is-invalid': showErrors && !attachment.base64}" @change="handleFileChange" ref="fileInput" accept=".pdf">
-                    </div>
+                        <div class="mt-5 p-4 border-2 border-dashed rounded" :class="{'bg-danger-subtle-border': showErrors && attachments.length === 0, 'bg-light': !(showErrors && attachments.length === 0)}">
+                            <label class="form-label fw-bold d-block mb-3">
+                                <i class="bi bi-paperclip text-primary me-2"></i> Upload Supporting Documents (PDF only, Max 5) <span class="text-danger">*</span>
+                            </label>
+
+                            <!-- File List Display with Notes -->
+                                <div v-for="(file, index) in attachments" :key="index" class="p-3 mb-3 border rounded shadow-sm bg-light">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <div class="small text-truncate fw-bold">
+                                            <i class="bi bi-file-earmark-pdf text-danger me-2"></i>
+                                            {{ file.name }}
+                                        </div>
+                                        <button class="btn btn-sm btn-outline-danger border-0" @click="attachments.splice(index, 1)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Notes Input per file -->
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-white small">Note:</span>
+                                        <input type="text" class="form-control" 
+                                              v-model="file.notes" 
+                                              placeholder="e.g. Official Receipt, BIR 2307, Billing Statement..."
+                                              maxlength="100">
+                                    </div>
+                                </div>
+
+                                <!-- Storage Usage Indicator -->
+                                      <div class="mb-2 d-flex justify-content-between align-items-center">
+                                          <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">Storage Usage</small>
+                                          <small :class="totalSizeMB > 14 ? 'text-danger fw-bold' : 'text-muted'" style="font-size: 0.7rem;">
+                                              {{ totalSizeMB }}MB / 15MB
+                                          </small>
+                                      </div>
+                                      <div class="progress mb-3" style="height: 5px;">
+                                          <div class="progress-bar" 
+                                              :class="totalSizeMB > 12 ? 'bg-danger' : 'bg-primary'" 
+                                              role="progressbar" 
+                                              :style="{ width: (totalSizeMB / 15 * 100) + '%' }"></div>
+                                      </div>
+
+                                      <!-- Add Button Trigger -->
+                                      <div v-if="attachments.length < maxFiles && totalSizeMB < 15">
+                                          <button class="btn btn-outline-primary btn-sm w-100 py-2 border-dashed" @click="$refs.fileInput.click()">
+                                              <i class="bi bi-plus-lg me-2"></i> Add Attachment ({{ attachments.length }}/{{ maxFiles }})
+                                          </button>
+                                          <input type="file" class="d-none" ref="fileInput" @change="handleFileChange" accept=".pdf">
+                                      </div>
+
+                                      <div v-else class="alert alert-warning py-2 small mb-0 mt-2">
+                                          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                          <span v-if="attachments.length >= maxFiles">Maximum limit of 5 files reached.</span>
+                                          <span v-else>Total attachment limit (15MB) reached. Cannot add more files.</span>
+                                      </div>
+                            
+                            <div v-if="attachments.length >= maxFiles" class="alert alert-info py-2 small mb-0 mt-2">
+                                Maximum limit of 5 files reached.
+                            </div>
+                        </div>
 
                     <!-- Participants -->
                     <div class="mt-4 p-4 border rounded bg-white shadow-sm">
@@ -1319,9 +1424,29 @@
                         </div>
                     </div>
 
+                    <!-- Action Buttons Container -->
                     <div class="d-flex justify-content-end mt-5 gap-3">
-                        <button class="btn btn-light border px-4" @click="resetForm">Clear</button>
-                        <button class="btn btn-primary px-5 fw-bold shadow" @click="submitForm" :disabled="isSubmitting">SUBMIT REQUEST</button>
+                        <button 
+                            class="btn btn-light border px-4" 
+                            @click="resetForm" 
+                            :disabled="isSubmitting"
+                        >
+                            Clear
+                        </button>
+                        
+                        <button 
+                            class="btn btn-primary px-5 fw-bold shadow d-flex align-items-center" 
+                            @click="submitForm" 
+                            :disabled="isSubmitting"
+                        >
+                            <template v-if="isSubmitting">
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>SUBMITTING...</span>
+                            </template>
+                            <template v-else>
+                                <span>SUBMIT REQUEST</span>
+                            </template>
+                        </button>
                     </div>
                 </div>
 
@@ -1406,6 +1531,9 @@
         data() {
           return {
             showErrors: false,
+            maxTotalSizeBytes: 15 * 1024 * 1024, // 15,728,640 bytes
+            submissionMode: "MANUAL", // Default: "MANUAL", options: "GENERATED", "FETCHED"
+
             // 1. FORM HEADER DATA (Payload for Submission)
             header: {
               rfpNo: "",
@@ -1417,6 +1545,7 @@
               sourceTabName: "", // Selected tab from the second dropdown
               primaryEmail: "",
               secondaryEmails: "",
+              remarks: "",
             },
 
             // 2. UI STATE CONTROLS
@@ -1435,12 +1564,8 @@
             searchResults: [], // Results from performStrictSearch
 
             // 4. TRANSACTION & TABLE CONFIG
-            attachment: {
-              name: "",
-              type: "",
-              size: 0,
-              base64: "",
-            },
+            attachments: [], // Changed to array for multi-file
+            maxFiles: 5,
             tableFields: [
               "YEAR",
               "MONTH",
@@ -1461,33 +1586,61 @@
           };
         },
         computed: {
-          // Filtered Primary list (shows all if empty and focused)
-          filteredPrimarySuggestions() {
-            const query = (this.header.primaryEmail || "").toLowerCase();
-            if (!query) return this.suggestedEmails; // Show all on first click
-            return this.suggestedEmails.filter((e) =>
-              e.toLowerCase().includes(query),
-            );
+          
+          totalSizeMB() {
+              const totalBytes = this.attachments.reduce((sum, f) => sum + (f.size || 0), 0);
+              return (totalBytes / (1024 * 1024)).toFixed(2);
           },
+          // Filtered Primary list (shows all if empty and focused)
+           filteredPrimarySuggestions() {
+              const query = (this.header.primaryEmail || "").toLowerCase();
+              
+              // Identify emails currently in the Secondary Recipient string to exclude them
+              const existingSecondaries = (this.header.secondaryEmails || "")
+                .split(",")
+                .map(e => e.trim().toLowerCase())
+                .filter(e => e !== "");
+
+              return this.suggestedEmails.filter((email) => {
+                const cleanEmail = email.toLowerCase().trim();
+                const isMatch = !query || cleanEmail.includes(query);
+                
+                // EXCLUSION LOGIC: Cannot suggest if it's already in the Secondary field
+                const isNotAlreadySecondary = !existingSecondaries.includes(cleanEmail);
+                
+                return isMatch && isNotAlreadySecondary;
+              });
+            },
 
           // Filtered Secondary list based on what is after the last comma
           filteredSecondarySuggestions() {
             const query = (this.secondaryQuery || "").trim().toLowerCase();
-            // Prevent showing emails already added in the string
-            const currentContent = (
-              this.header.secondaryEmails || ""
-            ).toLowerCase();
+            
+            // Identify Primary email to exclude it
+            const primaryEmail = (this.header.primaryEmail || "").trim().toLowerCase();
 
-            const available = this.suggestedEmails.filter((email) => {
-              const isMatch = email.toLowerCase().includes(query);
-              const isNotDuplicate = !currentContent.includes(
-                email.toLowerCase() + ",",
-              );
-              return isMatch && isNotDuplicate;
+            // Identify already added secondary emails in the current string to prevent double-suggesting
+            const currentSecondariesInInput = (this.header.secondaryEmails || "")
+              .split(",")
+              .map(e => e.trim().toLowerCase())
+              .filter(e => e !== "");
+
+            return this.suggestedEmails.filter((email) => {
+              const cleanEmail = email.toLowerCase().trim();
+              
+              // 1. Search Logic (Fragment matches typing)
+              const isMatch = !query || cleanEmail.includes(query);
+              
+              // 2. Exclusion: Cannot suggest if it is the Primary Email
+              const isNotPrimary = cleanEmail !== primaryEmail;
+              
+              // 3. Exclusion: Cannot suggest if it's already in the Secondary string
+              const isNotAlreadySecondary = !currentSecondariesInInput.includes(cleanEmail);
+
+              return isMatch && isNotPrimary && isNotAlreadySecondary;
             });
-
-            return available;
           },
+          
 
           filteredSourceFiles() {
             const files = this.sourceFiles || [];
@@ -1597,20 +1750,21 @@
             this.isSecondaryListOpen = true; // Keep open if they want to add another? or false to close.
           },
 
-          fetchDataBySearch() {
+          fetchDataBySearch(searchSource) {
             if (!this.header.sourceFileName) {
-              return this.$root.showCustomAlert(
-                "Warning",
-                "Please select a Source File first.",
-                "warning",
-              );
+              return this.$root.showCustomAlert("Warning", "Please select a Source File first.", "warning");
             }
-            if (!this.header.rfpNo && !this.header.invoiceNo) {
-              return this.$root.showCustomAlert(
-                "Input Needed",
-                "Please provide either an RFP No. or Invoice No.",
-                "warning",
-              );
+
+            // Define exactly what values we send to the backend
+            let rfpToSearch = "";
+            let invToSearch = "";
+
+            if (searchSource === 'RFP') {
+                rfpToSearch = this.header.rfpNo;
+            } else {
+                invToSearch = this.header.invoiceNo;
+                // If we are searching by invoice and an RFP was generated, 
+                // we intentionally don't send the RFP number to prioritize finding the invoice record.
             }
 
             this.$root.triggerLoading("Searching record(s)...", 0);
@@ -1620,43 +1774,31 @@
                 this.$root.isLoading = false;
 
                 if (res.status === "ALREADY_PAID") {
-                  this.initParticulars();
-                  return this.$root.showCustomAlert(
-                    "Action Blocked",
-                    res.message,
-                    "warning",
-                  );
+                  // If we find an existing record and it's paid, keep particulars clean
+                  if (this.submissionMode !== 'GENERATED') this.initParticulars();
+                  return this.$root.showCustomAlert("Action Blocked", res.message, "warning");
                 }
 
                 if (res.status === "FOUND") {
-                  const matches = res.data; // Now expecting an array
-
+                  const matches = res.data;
                   if (matches.length === 1) {
                     this.populateForm(matches[0]);
                   } else if (matches.length > 1) {
                     this.searchResults = matches;
                     this.isSearchModalOpen = true;
                   } else {
-                    this.$root.showCustomAlert(
-                      "Not Found",
-                      "No matching records in the selected file.",
-                      "info",
-                    );
+                    this.$root.showCustomAlert("Not Found", "No matching records found for this " + searchSource, "info");
                   }
                 }
               })
               .withFailureHandler((err) => {
                 this.$root.isLoading = false;
-                this.$root.showCustomAlert(
-                  "System Error",
-                  err.message,
-                  "error",
-                );
+                this.$root.showCustomAlert("System Error", err.message, "error");
               })
               .getRfpDataAdvanced(
                 this.header.sourceFileName,
-                this.header.rfpNo,
-                this.header.invoiceNo,
+                rfpToSearch,
+                invToSearch
               );
           },
 
@@ -1677,40 +1819,63 @@
             this.isSearchModalOpen = false;
           },
 
+          /**
+           * Synchronizes search results into the form.
+           * Fixed: Maintains "GENERATED" state and prevents RFP overwrites when 
+           * searching for invoices after an ID has been generated.
+           */
           populateForm(raw) {
-            // 1. Handle Header Fields
-            this.header.rfpNo = raw["RFP|PEF NO."] || "";
-            this.header.invoiceNo = raw["INVOICE NO."] || "";
-            this.header.dueDate = raw["DUE DATE"] || raw["DATE DUE"] || "";
+            // BUG FIX 1: Do not change status to 'FETCHED' if the user just generated an RFP.
+            // This ensures the RFP search button stays disabled (grayed out).
+            if (this.submissionMode !== "GENERATED") {
+                this.submissionMode = "FETCHED";
+            }
 
-            // 2. Capture Source Metadata
-            // Prioritize metadata returned from the server-side search results
+            // BUG FIX 2: Protect Header Identification Fields
+            // We only adopt the searched record's RFP number if we aren't in 'GENERATED' mode.
+            if (raw["RFP|PEF NO."] && this.submissionMode !== "GENERATED") {
+              this.header.rfpNo = raw["RFP|PEF NO."];
+            }
+            
+            // We update the invoice number if found, but don't clear it if search is empty
+            if (raw["INVOICE NO."]) {
+              this.header.invoiceNo = raw["INVOICE NO."];
+            }
+
+            // Handle multiple possible column naming conventions for dates
+            const fetchedDueDate = raw["DUE DATE"] || raw["DATE DUE"];
+            if (fetchedDueDate) {
+              this.header.dueDate = fetchedDueDate;
+            }
+
+            // 2. Metadata Synchronization
+            // Prioritize source metadata returned by the advanced search logic
             this.header.sourceFileUrl =
               raw["META_SOURCE_URL"] || this.selectedSourceObj?.url || "N/A";
 
-            // Update Tab Name: Check for meta tag first, then selected object, then fallback
             this.header.sourceTabName =
               raw["META_TAB_NAME"] ||
               this.selectedSourceObj?.tabName ||
               "MANUAL_ENTRY";
 
-            // Update the visible filename in the UI if not already set
+            // If a source was picked but filename display is missing, restore it
             if (!this.header.sourceFileName && this.selectedSourceObj) {
               this.header.sourceFileName =
                 this.selectedSourceObj.fileName || this.selectedSourceObj.name;
             }
 
-            // 3. Format and map Particulars
+            // 3. Mapping Particulars (Table Fields)
             const formattedData = {};
             this.tableFields.forEach((field) => {
+              // Extract the value from the database object
               let val =
                 raw[field] !== undefined && raw[field] !== null
                   ? raw[field]
                   : "";
 
-              // Securely parse and format currency/amount fields
+              // Apply financial formatting to amount fields
               if (this.isAmountField(field) && val !== "") {
-                const cleanVal = String(val).replace(/[^0-9.-]/g, ""); // Support negative numbers
+                const cleanVal = String(val).replace(/[^0-9.-]/g, ""); // Support numeric values
                 const num = parseFloat(cleanVal);
 
                 val = isNaN(num)
@@ -1723,17 +1888,17 @@
               formattedData[field] = val;
             });
 
+            // Set the reactively bound particulars object
             this.particulars = formattedData;
 
-            // UI Feedback
-            if (
-              this.$root &&
-              typeof this.$root.showCustomAlert === "function"
-            ) {
+            // UI Success Feedback
+            if (this.$root && typeof this.$root.showCustomAlert === "function") {
               this.$root.showCustomAlert(
-                "Success",
-                "Record loaded successfully.",
-                "success",
+                "Record Synced",
+                this.submissionMode === "GENERATED" 
+                  ? "Record data merged with your generated RFP number."
+                  : "All record details have been successfully loaded.",
+                "success"
               );
             }
           },
@@ -1774,24 +1939,22 @@
           },
 
           generateRfp() {
-            this.$root.triggerLoading("Generating RFP...", 0);
-            google.script.run
-              .withSuccessHandler((id) => {
-                this.$root.isLoading = false;
-                this.header.rfpNo = id;
-                this.initParticulars();
-                if (!this.header.dueDate)
-                  this.header.dueDate = new Date().toISOString().split("T")[0];
-              })
-              .withFailureHandler((err) => {
-                this.$root.isLoading = false;
-                this.$root.showCustomAlert(
-                  "Error",
-                  "Generation failed: " + err,
-                  "error",
-                );
-              })
-              .generateRfpNumber();
+             
+              this.$root.triggerLoading("Generating RFP...", 0);
+              google.script.run
+                  .withSuccessHandler((id) => {
+                      this.$root.isLoading = false;
+                      this.header.rfpNo = id;
+                      this.submissionMode = "GENERATED"; // THIS DISABLES THE RFP SEARCH BUTTON
+                      this.initParticulars();
+                      if (!this.header.dueDate)
+                          this.header.dueDate = new Date().toISOString().split("T")[0];
+                  })
+                  .withFailureHandler((err) => {
+                      this.$root.isLoading = false;
+                      this.$root.showCustomAlert("Error", "Generation failed: " + err, "error");
+                  })
+                  .generateRfpNumber();
           },
 
           isAmountField(f) {
@@ -1814,18 +1977,44 @@
             }
           },
           handleFileChange(e) {
-            const file = e.target.files[0];
-            if (!file || file.type !== "application/pdf") return;
-            const reader = new FileReader();
-            reader.onload = (f) => {
-              this.attachment = {
-                name: file.name,
-                type: file.type,
-                size: file.size,
-                base64: f.target.result.split(",")[1],
+              const file = e.target.files[0];
+              if (!file) return;
+
+              if (file.type !== "application/pdf") {
+                  return this.$root.showCustomAlert("Error", "Only PDF files are allowed.", "warning");
+              }
+
+              // 1. Calculate Current Cumulative Size
+              const currentTotal = this.attachments.reduce((sum, f) => sum + (f.size || 0), 0);
+              const newSize = file.size;
+
+              // 2. Size Validation (Combined total)
+              if (currentTotal + newSize > this.maxTotalSizeBytes) {
+                  const remainingSpace = ((this.maxTotalSizeBytes - currentTotal) / (1024 * 1024)).toFixed(2);
+                  return this.$root.showCustomAlert(
+                      "Attachment Too Large", 
+                      `Adding this file would exceed the 15MB total limit. You only have ${remainingSpace}MB remaining space.`, 
+                      "error"
+                  );
+              }
+
+              // 3. File Count Validation
+              if (this.attachments.length >= this.maxFiles) {
+                  return this.$root.showCustomAlert("Limit reached", "Maximum 5 files allowed.", "info");
+              }
+
+              const reader = new FileReader();
+              reader.onload = (f) => {
+                  this.attachments.push({
+                      name: file.name,
+                      type: file.type,
+                      size: file.size, // Essential to keep this to calculate totals
+                      base64: f.target.result.split(",")[1],
+                      notes: ""
+                  });
+                  e.target.value = ""; 
               };
-            };
-            reader.readAsDataURL(file);
+              reader.readAsDataURL(file);
           },
           initParticulars() {
             const freshData = {};
@@ -1833,187 +2022,184 @@
             this.particulars = freshData;
           },
 
-          submitForm() {
-            this.showErrors = true;
+         submitForm() {
+          // 1. Capture Identity: Get the actual email used to login to the app
+          const appUserEmail = this.$root.currentUserEmail || "Unknown App User";
 
-            const hasRfp = !!this.header.rfpNo?.trim();
-            const hasInvoice = !!this.header.invoiceNo?.trim();
+          // 2. Enable error highlighting for validation feedback
+          this.showErrors = true;
 
-            // 1. Basic Header Validation
-            if (!this.header.rfpNo)
-              return this.$root.showCustomAlert(
-                "Error",
-                "RFP Number is missing.",
-                "warning",
-              );
-            if (!this.header.dueDate)
-              return this.$root.showCustomAlert(
-                "Error",
-                "Due Date is required.",
-                "warning",
-              );
+          // 3. Mandatory Header Validation
+          const hasRfp = !!this.header.rfpNo?.trim();
+          const hasInvoice = !!this.header.invoiceNo?.trim();
+          const hasDueDate = !!this.header.dueDate;
 
-            // NEW: Ensure Source and Tab are actually selected for the payload
-            if (!this.header.sourceFileName) {
-              this.header.sourceFileName = "MANUAL_ENTRY";
-              this.header.sourceTabName = "N/A";
-              this.header.sourceFileUrl = "N/A";
-            }
-            // 1. Mandatory Identifier Check
-            if (!hasInvoice) {
-              return this.$root.showCustomAlert(
-                "Error",
-                "Invoice Number is required.",
-                "warning",
-              );
-            }
-
-            // Specific logic: if RFP has value, invoice must not be empty
-            // (This is already covered by !hasInvoice, but let's be explicit if you want)
-            if (hasRfp && !hasInvoice) {
-              return this.$root.showCustomAlert(
-                "Error",
-                "Invoice Number must be provided alongside RFP.",
-                "warning",
-              );
-            }
-
-            // 2. Security/Date Validation
-            if (!this.isSecurityValidated)
-              return this.$root.showCustomAlert(
-                "Error",
-                "Invalid or Past Due Date.",
-                "error",
-              );
-
-            // 3. Particulars Validation
-            const missingFields = this.tableFields.filter(
-              (f) => !String(this.particulars[f] || "").trim(),
+          if (!hasRfp || !hasInvoice || !hasDueDate) {
+            return this.$root.showCustomAlert(
+              "Missing Information",
+              "Please ensure RFP No., Invoice No., and Due Date are filled.",
+              "warning"
             );
-            if (missingFields.length > 0) {
-              return this.$root.showCustomAlert(
-                "Missing Data",
-                "Please fill all particulars fields.",
-                "warning",
-              );
-            }
+          }
 
-            // 4. File Attachment Validation
-            if (!this.attachment.base64) {
-              return this.$root.showCustomAlert(
-                "File Missing",
-                "Please upload the PRF document.",
-                "warning",
-              );
-            }
+          // 4. Security/Date Validation
+          if (!this.isSecurityValidated) {
+            return this.$root.showCustomAlert(
+              "Invalid Date",
+              "The selected Due Date cannot be in the past.",
+              "error"
+            );
+          }
 
-            // 5. Participants Formatting
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            const primaryClean = (this.header.primaryEmail || "").trim();
-            if (!emailRegex.test(primaryClean)) {
-              return this.$root.showCustomAlert(
-                "Required",
-                "Invalid Primary Email.",
-                "warning",
-              );
-            }
+          // 5. Particulars Grid Validation (All fields in the details section)
+          const missingFields = this.tableFields.filter(
+            (field) => !String(this.particulars[field] || "").trim()
+          );
+          if (missingFields.length > 0) {
+            return this.$root.showCustomAlert(
+              "Incomplete Particulars",
+              "All particulars fields must be completed before submission.",
+              "warning"
+            );
+          }
 
-            const formattedParticipants = [
-              { email: primaryClean.toLowerCase(), tag: "Primary" },
-            ];
-            const secondaryRaw = (this.header.secondaryEmails || "").trim();
-            if (secondaryRaw) {
-              secondaryRaw
-                .split(",")
-                .map((e) => e.trim())
-                .filter((e) => e !== "")
-                .forEach((email) => {
-                  if (emailRegex.test(email)) {
-                    formattedParticipants.push({
-                      email: email.toLowerCase(),
-                      tag: "Secondary",
-                    });
-                  }
+          // 6. Attachment Logic (Check if exists + check if notes are mandatory)
+          if (!this.attachments || this.attachments.length === 0) {
+            return this.$root.showCustomAlert(
+              "Attachment Required",
+              "Please upload at least one PDF supporting document.",
+              "warning"
+            );
+          }
+
+          const hasInvalidNotes = this.attachments.some(f => !f.notes || f.notes.trim() === "");
+          if (hasInvalidNotes) {
+            return this.$root.showCustomAlert(
+              "Missing Descriptions",
+              "Please provide a Note/Description for every uploaded file (e.g., 'Invoice', 'Official Receipt').",
+              "warning"
+            );
+          }
+
+          // 7. Recipient Email Validation & Formatting
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          const primaryClean = (this.header.primaryEmail || "").trim();
+
+          if (!emailRegex.test(primaryClean)) {
+            return this.$root.showCustomAlert(
+              "Email Error",
+              "A valid Primary Recipient email is required.",
+              "warning"
+            );
+          }
+
+          const formattedParticipants = [
+            { email: primaryClean.toLowerCase(), tag: "Primary" }
+          ];
+
+          const secondaryRaw = (this.header.secondaryEmails || "").trim();
+          if (secondaryRaw) {
+            secondaryRaw.split(",").forEach(email => {
+              const clean = email.trim();
+              if (clean && emailRegex.test(clean)) {
+                formattedParticipants.push({
+                  email: clean.toLowerCase(),
+                  tag: "Secondary"
                 });
+              }
+            });
+          }
+
+          // 8. Prepare for Submission State
+          this.isSubmitting = true;
+
+          // Determine specific success message based on the mode
+          let successTitle = "Request Recorded";
+          let successMessage = "";
+          if (this.submissionMode === "GENERATED") {
+            successMessage = "A new request has been submitted with a freshly generated RFP number.";
+          } else if (this.submissionMode === "FETCHED") {
+            successMessage = "The existing record data has been updated and processed successfully.";
+          } else {
+            successMessage = "The manual RFP entry has been successfully recorded and sent.";
+          }
+
+          // 9. Build Final Payload
+          const payload = {
+            header: this.header,
+            particulars: this.particulars,
+            attachments: this.attachments,
+            participants: formattedParticipants,
+            tableFields: this.tableFields,
+            userAppEmail: appUserEmail, // Uses correctly defined variable from step 1
+            meta: {
+              mode: this.submissionMode || "MANUAL",
+              timestamp: new Date().toISOString()
             }
+          };
 
-            // 6. Build Final Payload and Execute
-            const payload = {
-              header: this.header, // Contains rfpNo, dueDate, sourceFileName, sourceFileUrl, sourceTabName
-              particulars: this.particulars,
-              attachment: this.attachment,
-              participants: formattedParticipants,
-              tableFields: this.tableFields,
-            };
+          // 10. Execute Google Apps Script
+          google.script.run
+            .withSuccessHandler((res) => {
+              this.isSubmitting = false;
 
-            this.isSubmitting = true;
-            google.script.run
-              .withSuccessHandler((res) => {
-                this.isSubmitting = false;
-                if (res.success) {
-                  this.$root.showCustomAlert(
-                    res.message,
-                    "Recorded successfully!",
-                  );
-                  this.resetForm();
-                } else {
-                  this.$root.showCustomAlert(
-                    "Submission Failed",
-                    res.message,
-                    "danger",
-                  );
-                }
-              })
-              .withFailureHandler((err) => {
-                this.isSubmitting = false;
-                this.$root.showCustomAlert("Error", err.message, "danger");
-              })
-              .processSubmission(payload);
-          },
-
+              if (res.success) {
+                this.$root.showCustomAlert(successTitle, successMessage, "success");
+                // Clear the form after a successful hit
+                this.resetForm();
+                this.submissionMode = "MANUAL";
+              } else {
+                this.$root.showCustomAlert("Submission Failed", res.message, "danger");
+              }
+            })
+            .withFailureHandler((err) => {
+              this.isSubmitting = false;
+              this.$root.showCustomAlert("System Error", err.message, "danger");
+            })
+            .processSubmission(payload);
+        },
           resetForm() {
             this.showErrors = false;
+
             // 1. Reset Header Object
             this.header = {
-              rfpNo: "",
-              invoiceNo: "",
-              date: new Date().toISOString().split("T")[0], // Keep today's date
-              dueDate: "",
-              sourceFileName: "",
-              sourceTabName: "",
-              sourceFileUrl: "",
-              primaryEmail: "",
-              secondaryEmails: "",
+                rfpNo: "",
+                invoiceNo: "",
+                date: new Date().toISOString().split("T")[0], // Keep today's date
+                dueDate: "",
+                sourceFileName: "",
+                sourceTabName: "",
+                sourceFileUrl: "",
+                primaryEmail: "",
+                secondaryEmails: "",
+                remarks: "",
             };
 
             // 2. Clear Particulars (the table details)
             this.initParticulars();
 
-            // 3. Clear Attachment Object
-            this.attachment = {
-              name: "",
-              type: "",
-              size: 0,
-              base64: "",
-            };
+            // 3. NEW: Clear the Multi-File Attachments Array
+            // This removes all 5 files and their associated notes
+            this.attachments = []; 
 
             // 4. CRITICAL: Clear the physical file input from the browser
+            // This allows the user to re-select the same file if they want
             if (this.$refs.fileInput) {
-              this.$refs.fileInput.value = "";
+                this.$refs.fileInput.value = "";
             }
 
-            // 5. Reset UI states
+            // 5. Reset all UI/Dropdown states
             this.isSubmitting = false;
             this.isSourceListOpen = false;
             this.isPrimaryListOpen = false;
+            this.isSecondaryListOpen = false; // Added to ensure secondary dropdown closes
             this.isSearchModalOpen = false;
 
-            // Optional: Refresh suggestions if they were cleared
-            // this.fetchSourceFiles();
-            // this.fetchSuggestedEmails();
+            // Reset search results if any
+            this.searchResults = [];
 
-            console.log("All form fields have been cleared.");
-          },
+            console.log("Form reset: Multi-file attachments and all metadata cleared.");
+        },
           executeSubmission() {
             this.isSubmitting = true;
             this.$root.triggerLoading("Submitting Request...", 0);
@@ -2067,7 +2253,7 @@
             // but if you want it gone: this.header.sourceFileName = "";
 
             this.initParticulars();
-            this.attachment = { name: "", type: "", size: 0, base64: "" };
+            this.attachments = [];
 
             if (this.$refs.fileInput) this.$refs.fileInput.value = "";
           },
@@ -2091,7 +2277,7 @@
             alertModalInstance: null,
             // --- BACKEND BOUNDARY: User Session State ---
             // Backend Dev: Store the active user's details (e.g., email, role, full name) here upon successful login.
-            currentUser: null,
+            currentUserEmail: null,
           };
         },
         computed: {
