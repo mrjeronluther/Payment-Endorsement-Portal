@@ -69,7 +69,6 @@
     /* ==========================================
      PRINT FORMATTING (STRICT GRID)
      ========================================== */
-
     .print-logo {
       display: none;
       width: 200px;
@@ -271,11 +270,7 @@
 <body>
   <div id="app">
     <div v-if="isLoading" id="loading-pane">
-      <img
-          src="https://d2nnykqiaju69u.cloudfront.net/pslife_photos/Maricel_temp/logos/megaworld%20lifestyel%20malls.png"
-          alt="Logo"
-          class="loading-logo mb-3"
-        />
+      <img src="https://d2nnykqiaju69u.cloudfront.net/pslife_photos/Maricel_temp/logos/megaworld%20lifestyel%20malls.png" alt="Logo" class="loading-logo mb-3" />
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Loading...</span>
       </div>
@@ -289,22 +284,13 @@
             <h5 class="modal-title fw-bold" :class="alertTypeClass">
               <i :class="alertIconClass"></i> {{ alertTitle }}
             </h5>
-            <button
-                type="button"
-                class="btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-              ></button>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body text-center py-4">
             <p class="fs-5">{{ alertMessage }}</p>
           </div>
           <div class="modal-footer border-0 justify-content-center">
-            <button
-                type="button"
-                class="btn btn-primary px-4"
-                data-bs-dismiss="modal"
-              >
+            <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">
                 Acknowledge
               </button>
           </div>
@@ -314,14 +300,11 @@
 
     <div class="container py-5" v-show="!isLoading">
       <div class="text-center mb-5" v-if="!['login', 'register', 'forgot_password'].includes(currentView)">
-        <img
-            src="https://d2nnykqiaju69u.cloudfront.net/pslife_photos/Maricel_temp/logos/megaworld%20lifestyel%20malls.png"
-            alt="Megaworld Logo"
-            style="height: 60px"
-          />
-        <h3 class="mt-3 fw-bold text-secondary">
-          PAYMENT ENDORSEMENT PLATFORM
-        </h3>
+        <img src="https://d2nnykqiaju69u.cloudfront.net/pslife_photos/Maricel_temp/logos/megaworld%20lifestyel%20malls.png" alt="Megaworld Logo" style="height: 60px" />
+        <h4 class="mb-0 fw-bold" style="color: var(--primary-calm)">Payment Endorsement Platform</h4>
+        <p class="text-muted small mb-0 font-monospace text-uppercase" style="letter-spacing: 1px">Payment Coordination
+          Unit</p>
+
       </div>
 
       <login-view v-if="currentView === 'login'" @navigate="changeView"></login-view>
@@ -345,24 +328,14 @@
             <div class="card elegant-card border-0 p-4 p-md-5 shadow-lg" style="border-radius: 15px;">
 
                 <div class="text-center mb-4">
-                    <img src="https://d2nnykqiaju69u.cloudfront.net/pslife_photos/Maricel_temp/logos/megaworld%20lifestyel%20malls.png"
-                         alt="Megaworld Logo" style="height: 60px;" class="mb-3">
+                    <img src="https://d2nnykqiaju69u.cloudfront.net/pslife_photos/Maricel_temp/logos/megaworld%20lifestyel%20malls.png"alt="Megaworld Logo" style="height: 60px;" class="mb-3">
                     <h4 class="fw-bold text-secondary" style="font-size: 1.1rem; letter-spacing: 0.5px;">PAYMENT ENDORSEMENT PLATFORM</h4>
                     <p class="text-muted small">Sign in to your account</p>
                 </div>
-
                 <form @submit.prevent="submitLogin" id="loginForm">
                     <div class="mb-3">
                         <label class="form-label fw-semibold text-secondary small">EMAIL ADDRESS</label>
-                        <input
-                            type="email"
-                            name="email"
-                            class="form-control form-control-lg bg-light border-0 shadow-sm"
-                            v-model="credentials.email"
-                            placeholder="example@megaworld-lifestyle.com"
-                            autocomplete="username email"
-                            list="emailHistory"
-                            required>
+                        <inpu type="email" name="email" class="form-control form-control-lg bg-light border-0 shadow-sm" v-model="credentials.email" placeholder="example@megaworld-lifestyle.com" autocomplete="username email" list="emailHistory" required>
                         <datalist id="emailHistory">
                             <option v-for="email in suggestedEmails" :key="email" :value="email"></option>
                         </datalist>
@@ -422,7 +395,6 @@
             try {
               let historySet = new Set(this.suggestedEmails);
               historySet.add(email.toLowerCase().trim());
-
               const updatedHistory = Array.from(historySet).slice(-5);
               localStorage.setItem(
                 "pep_login_history",
@@ -441,18 +413,14 @@
                 "warning",
               );
             }
-
             this.$root.triggerLoading("Verifying Account Access...", 0);
-
             google.script.run
               .withSuccessHandler((response) => {
                 this.$root.isLoading = false;
                 this.$root.currentUser = response.user.fullName;
                 this.$root.currentUserEmail = response.user.email;
-
                 // Save to custom history and trigger browser save-password prompt
                 this.saveEmailToHistory(this.credentials.email);
-
                 this.$root.showCustomAlert(
                   "Welcome",
                   "Login successful.",
@@ -675,9 +643,9 @@
             if (!this.form.email) return "N/A";
             return this.form.email
               .toLowerCase()
-              .includes("@megaworld-lifestyle.com")
-              ? "ORGANIC"
-              : "NON ORGANIC";
+              .includes("@megaworld-lifestyle.com") ?
+              "ORGANIC" :
+              "NON ORGANIC";
           },
           dynamicAccessLevel() {
             if (!this.form.department) return "PENDING...";
@@ -687,17 +655,15 @@
         methods: {
           requestOtp() {
             if (!this.form.email) return;
-            
             // Email format verification
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(this.form.email.trim())) {
-                return this.$root.showCustomAlert(
-                    "Invalid Format",
-                    "Please enter a valid email address.",
-                    "warning"
-                );
+              return this.$root.showCustomAlert(
+                "Invalid Format",
+                "Please enter a valid email address.",
+                "warning"
+              );
             }
-
             this.loading = true;
             google.script.run
               .withSuccessHandler(() => {
@@ -722,7 +688,6 @@
                 "warning"
               );
             }
-
             this.loading = true;
             google.script.run
               .withSuccessHandler(() => {
@@ -747,7 +712,6 @@
                 "warning"
               );
             }
-
             if (this.form.password !== this.form.confirmPassword) {
               return this.$root.showCustomAlert(
                 "Password Error",
@@ -755,10 +719,8 @@
                 "error"
               );
             }
-
             this.loading = true;
             this.$root.triggerLoading("Creating secure profile...", 0);
-
             google.script.run
               .withSuccessHandler((res) => {
                 this.$root.isLoading = false;
@@ -959,10 +921,8 @@
           },
           resetSubmit() {
             if (this.newPassword !== this.confirmPassword) return;
-
             this.uiLoading = true;
             this.$root.triggerLoading("Syncing with secure database...", 0);
-
             google.script.run
               .withSuccessHandler((res) => {
                 this.$root.isLoading = false;
@@ -972,7 +932,6 @@
                   res.message,
                   "success",
                 );
-
                 // DELAYED REDIRECT: Prevents logging in before Sheet cache refreshes
                 setTimeout(() => {
                   this.$emit("navigate", "login");
@@ -1088,16 +1047,12 @@
             if (this.logoutModalInstance) {
               this.logoutModalInstance.hide();
             }
-
             this.$root.triggerLoading("Logging out securely...", 1000);
-
             // --- BACKEND BOUNDARY: Clear Session ---
             // Backend Dev: Invalidate the session token or server-side session here.
-
             setTimeout(() => {
               // Clear the frontend state
               this.$root.currentUser = null;
-
               this.$emit("navigate", "login");
               this.$root.showCustomAlert(
                 "Logged Out",
@@ -1108,8 +1063,7 @@
           },
         },
       };
-
-      const FormRequestView = {
+const FormRequestView = {
   template: `
     <style>
       /* Border highlighting for errors */
@@ -1127,11 +1081,71 @@
       }
 
       .spinner-border-sm {
-    width: 1rem;
-    height: 1rem;
-    border-width: 0.15em;
-    vertical-align: middle;
-}
+          width: 1rem;
+          height: 1rem;
+          border-width: 0.15em;
+          vertical-align: middle;
+      }
+
+      /* ADD THIS TO YOUR EXISTING <style> BLOCK */
+      @media print {
+        @page {
+          size: letter;
+          margin: 0.2in; /* Minimal margins to maximize space */
+        }
+
+        html, body {
+          height: 100%;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow: hidden;
+        }
+
+        /* Force the container to occupy exactly the printable height of a letter page */
+        .printable-content {
+          display: block !important;
+          width: 8.1in !important;   /* 8.5" - margins */
+          height: 10.6in !important; /* 11.0" - margins */
+          max-height: 10.6in !important;
+          padding: 0.2in !important;
+          margin: 0 auto !important;
+          overflow: hidden !important; /* Cuts off content that would spill to page 2 */
+          position: relative;
+          box-sizing: border-box;
+          font-size: 9pt !important; /* Slightly shrink overall text */
+        }
+
+        /* Prevent page breaks inside table rows or groups */
+        table, tr, div {
+          page-break-inside: avoid !important;
+        }
+      }
+      /* Ensure the standard dropdown styling used by Source File is available for Notes */
+      .custom-dropdown-menu {
+          border-radius: 0 0 8px 8px;
+          border-top: none;
+          max-height: 250px;
+          overflow-y: auto;
+          z-index: 1050;
+          font-size: 0.9rem;
+          background: white;
+      }
+
+      .cursor-pointer {
+          cursor: pointer;
+      }
+
+      /* Optional: styling for the specific labels list items */
+      .label-list-item {
+          padding: 0.6rem 1rem;
+          border-bottom: 1px solid #f0f0f0;
+          transition: background 0.2s;
+      }
+
+      .label-list-item:hover {
+          background-color: #f1f4f9;
+          color: #0d6efd;
+      }
     </style>
 
     <div class="form-request-container animation-fade-in" id="printable-area">
@@ -1177,14 +1191,16 @@
 
                     <!-- RFP Section -->
                       <div class="col-md-5">
-                        <label class="form-label fw-bold text-secondary small text-uppercase">RFP NO. <span class="text-danger">*</span></label>
+                        <label class="form-label fw-bold ...">
+                            RFP NO. <span v-if="searchType !== 'INVOICE'" class="text-danger">*</span>
+                        </label>
                         <div class="input-group shadow-sm">
                             <input type="text" class="form-control bg-light" 
                                 :class="{'is-invalid': showErrors && !header.rfpNo}" 
                                 v-model="header.rfpNo" 
                                 @input="submissionMode = 'MANUAL'"
                                 placeholder="Input RFP No" :disabled="isSubmitting">
-                            
+
                             <!-- RFP Search Button: Disabled if Generated -->
                             <button class="btn btn-primary" type="button" 
                                 @click="fetchDataBySearch('RFP')" 
@@ -1206,7 +1222,7 @@
                         <label class="form-label fw-bold text-secondary small text-uppercase">Invoice No. <span class="text-danger">*</span></label>
                         <div class="input-group shadow-sm">
                             <input type="text" class="form-control bg-light" :class="{'is-invalid': showErrors && !header.invoiceNo}" v-model="header.invoiceNo" placeholder="Input Invoice No">
-                            
+
                             <!-- Invoice Search Button: Always active if Source is selected -->
                             <button class="btn btn-primary" type="button" 
                                 @click="fetchDataBySearch('INVOICE')" 
@@ -1225,7 +1241,7 @@
                 <!-- PARTICULARS DETAILS GROUPED -->
                 <div class="mt-5" v-if="isSecurityValidated">
                     <h5 class="fw-bold mb-4 text-primary border-bottom pb-2"><i class="bi bi-info-circle-fill me-2"></i> PARTICULARS DETAILS</h5>
-                    
+
                     <div class="row g-4">
                          <!-- Group 1: Entities -->
                         <div class="col-md-6">
@@ -1304,7 +1320,39 @@
                                     </div>
                                     <div class="col-md-2">
                                         <label class="form-label small fw-bold text-muted text-uppercase">Service Kind <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" :class="{'is-invalid': showErrors && !particulars['KINDS OF SERVICE']}" v-model="particulars['KINDS OF SERVICE']">
+                                        <div class="service-dropdown-container position-relative">
+                                            <div class="input-group shadow-sm">
+                                                <input type="text" 
+                                                      class="form-control" 
+                                                      :class="{'is-invalid': showErrors && !particulars['KINDS OF SERVICE']}" 
+                                                      v-model="particulars['KINDS OF SERVICE']"
+                                                      @focus="isServiceKindOpen = true"
+                                                      @input="isServiceKindOpen = true"
+                                                      autocomplete="off">
+                                                <button class="btn btn-outline-secondary btn-sm" type="button" v-if="particulars['KINDS OF SERVICE']" @click="particulars['KINDS OF SERVICE'] = ''">
+                                                    <i class="bi bi-x"></i>
+                                                </button>
+                                            </div>
+
+                                            <!-- Service Kind Dropdown -->
+                                            <ul v-show="isServiceKindOpen" 
+                                                class="list-group position-absolute w-100 shadow-lg custom-dropdown-menu" 
+                                                style="z-index: 1080; margin-top: 2px;">
+
+                                                <li v-if="getFilteredLabels(particulars['KINDS OF SERVICE']).length === 0" 
+                                                    class="list-group-item text-muted small py-3 text-center">
+                                                    No matching kinds.
+                                                </li>
+
+                                                <li v-for="label in getFilteredLabels(particulars['KINDS OF SERVICE'])" 
+                                                    :key="label" 
+                                                    class="list-group-item list-group-item-action cursor-pointer d-flex align-items-center justify-content-between"
+                                                    @mousedown.prevent="selectServiceKind(label)">
+                                                    <span class="small">{{ label }}</span>
+                                                    <i class="bi bi-check2 text-primary" v-if="particulars['KINDS OF SERVICE'] === label"></i>
+                                                </li>
+                                            </ul>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1332,7 +1380,15 @@
                           </div>
                       </div>
                     <!-- File Upload Section -->
-                        <div class="mt-5 p-4 border-2 border-dashed rounded" :class="{'bg-danger-subtle-border': showErrors && attachments.length === 0, 'bg-light': !(showErrors && attachments.length === 0)}">
+                        <div class="mt-5 p-4 border-2 border-dashed rounded" 
+                            :class="{
+                                'bg-danger-subtle-border': (showErrors && attachments.length === 0) || !isLabelConfigValid, 
+                                'bg-light': isLabelConfigValid
+                            }">
+
+                            <div v-if="!isLabelConfigValid" class="text-danger small fw-bold mb-2">
+                                <i class="bi bi-exclamation-octagon-fill"></i> CRITICAL: Cannot submit. FILE NOTES configuration source missing.
+                            </div>
                             <label class="form-label fw-bold d-block mb-3">
                                 <i class="bi bi-paperclip text-primary me-2"></i> Upload Supporting Documents (PDF only, Max 5) <span class="text-danger">*</span>
                             </label>
@@ -1348,22 +1404,52 @@
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </div>
-                                    
-                                    <!-- Notes Input per file -->
-                                    <div class="input-group input-group-sm">
-                                        <span class="input-group-text bg-white small">Note:</span>
-                                        <input type="text" class="form-control" 
-                                              v-model="file.notes" 
-                                              placeholder="e.g. Official Receipt, BIR 2307, Billing Statement..."
-                                              maxlength="100">
+
+                                <!-- Notes Input per file with CUSTOM dropdown -->
+                                    <div class="position-relative w-100" @click.stop> <!-- .stop prevents the click from reaching the dashboard/card which might trigger a reset -->
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text bg-white"><i class="bi bi-tag text-primary"></i></span>
+                                            <input type="text" 
+                                                  class="form-control" 
+                                                  :class="{'is-invalid': showErrors && !isLabelValid(file.notes)}"
+                                                  v-model="file.notes" 
+                                                  @mousedown="activeLabelDropdown = index" 
+                                                  @focus="activeLabelDropdown = index"
+                                                  @input="activeLabelDropdown = index"
+                                                  placeholder="Search or type document type..."
+                                                  autocomplete="off">
+                                            <button class="btn btn-outline-secondary" type="button" v-if="file.notes" @click="file.notes = ''; activeLabelDropdown = index">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                        </div>
+
+                                        <!-- The Dropdown Menu -->
+                                        <ul v-show="activeLabelDropdown === index" 
+                                            class="list-group position-absolute w-100 shadow-lg custom-dropdown-menu" 
+                                            style="z-index: 1100; margin-top: 2px;">
+
+                                            <li v-if="getFilteredLabels(file.notes).length === 0" class="list-group-item text-muted small py-3 text-center">
+                                                Indicate this one to "Others" option.
+                                            </li>
+
+                                            <!-- Use @mousedown.prevent instead of @click for list items -->
+                                            <!-- This prevents the input from losing focus before the value is selected -->
+                                            <li v-for="label in getFilteredLabels(file.notes)" 
+                                                :key="label" 
+                                                class="list-group-item list-group-item-action cursor-pointer d-flex align-items-center justify-content-between label-list-item"
+                                                @mousedown.prevent="selectLabel(index, label)">
+                                                <span>{{ label }}</span>
+                                                <i class="bi bi-check2 text-primary" v-if="file.notes === label"></i>
+                                            </li>
+                                        </ul>
                                     </div>
                                 </div>
 
                                 <!-- Storage Usage Indicator -->
                                       <div class="mb-2 d-flex justify-content-between align-items-center">
                                           <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">Storage Usage</small>
-                                          <small :class="totalSizeMB > 14 ? 'text-danger fw-bold' : 'text-muted'" style="font-size: 0.7rem;">
-                                              {{ totalSizeMB }}MB / 15MB
+                                          <small :class="totalSizeMB > 9 ? 'text-danger fw-bold' : 'text-muted'" style="font-size: 0.7rem;">
+                                              {{ totalSizeMB }}MB / 10MB
                                           </small>
                                       </div>
                                       <div class="progress mb-3" style="height: 5px;">
@@ -1386,7 +1472,7 @@
                                           <span v-if="attachments.length >= maxFiles">Maximum limit of 5 files reached.</span>
                                           <span v-else>Total attachment limit (15MB) reached. Cannot add more files.</span>
                                       </div>
-                            
+
                             <div v-if="attachments.length >= maxFiles" class="alert alert-info py-2 small mb-0 mt-2">
                                 Maximum limit of 5 files reached.
                             </div>
@@ -1433,7 +1519,7 @@
                         >
                             Clear
                         </button>
-                        
+
                         <button 
                             class="btn btn-primary px-5 fw-bold shadow d-flex align-items-center" 
                             @click="submitForm" 
@@ -1454,86 +1540,218 @@
                     <p class="text-muted">Select Source, RFP No, and Due Date to begin.</p>
                 </div>
             </div>
+
         </div>
 
-       <!-- PRINTABLE CONTENT -->
-<div class="d-none d-print-block printable-content" style="padding: 0.4in; color: #000; font-family: 'Arial', sans-serif;">
-    <div class="print-logo"></div>
-    <div class="text-center" style="margin-bottom: 25px;">
-        <h1 style="font-size: 18pt; font-weight: bold; border-bottom: 3px solid #000; padding-bottom: 10px; margin-top: 0;">REQUEST FOR PAYMENT</h1>
-    </div>
+          <!-- PRINTABLE CONTENT -->
+    <div class="d-none d-print-block printable-content" style="color: #000; font-family: 'Segoe UI', Arial, sans-serif; background: #fff;">
 
-    <!-- Top Metadata Table (RFP NO, DATE, DUE DATE) -->
-    <table class="meta-table" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-        <tr>
-            <td style="width: 45%;">
-                <div style="font-size: 8pt; color: #555; text-transform: uppercase; font-weight: bold;">RFP Number</div>
-                <div style="font-size: 15pt; font-weight: bold; border-bottom: 1px solid #ccc; width: 90%;">{{ header.rfpNo }}</div>
-            </td>
-            <td style="width: 27.5%;">
-                <div style="font-size: 8pt; color: #555; text-transform: uppercase;">Date Requested</div>
-                <div style="font-size: 11pt; border-bottom: 1px solid #ccc;">{{ header.date }}</div>
-            </td>
-            <td style="width: 27.5%;">
-                <div style="font-size: 8pt; color: #555; text-transform: uppercase;">Due Date</div>
-                <div style="font-size: 11pt; font-weight: bold; border-bottom: 1px solid #ccc;">{{ header.dueDate }}</div>
-            </td>
-        </tr>
-    </table>
+        <!-- Header Section -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 4px solid #333; padding-bottom: 10px; margin-bottom: 25px;">
+            <div class="print-logo" style="width: 340px;"></div>
+            <div style="text-align: right;">
+                <h1 style="font-size: 22pt; font-weight: 900; margin: 0; color: #000;">REQUEST FOR PAYMENT
+                <div style="font-size: 10pt; font-weight: bold;">{{ particulars['PAYOR NAME'] || '—' }}</div></h1>
+                <div style="font-size: 10pt; color: #666; font-weight: bold; margin-top: 5px;">RFP NO: <span style="font-size: 14pt; color: #000;">{{ header.rfpNo }}</span></div>
+            </div>
+        </div>
 
-    <!-- The Restricted Width Grid (Matches your high-quality previous design) -->
-    <table class="particulars-grid" style="width: 100%; border: 1px solid #000; border-collapse: collapse;">
-        <tr v-for="(row, i) in Math.ceil(tableFields.length / 3)" :key="i">
-            <td v-for="(field, j) in tableFields.slice(i * 3, i * 3 + 3)" 
-                :key="field" 
-                class="grid-cell" 
-                style="border: 1px solid #000; padding: 8px; width: 33.33%; vertical-align: top;">
-                <div style="font-size: 7pt; color: #333; text-transform: uppercase; margin-bottom: 4px; font-weight: bold;">{{ field.replace(/_/g, ' ') }}</div>
-                <div style="font-size: 9.5pt; font-weight: bold; line-height: 1.2;">{{ particulars[field] || '—' }}</div>
-            </td>
-            
-            <!-- Filler Columns for alignment if row is incomplete -->
-            <td v-for="empty in (3 - tableFields.slice(i * 3, i * 3 + 3).length)" 
-                :key="'e-'+empty" 
-                class="grid-cell" style="border: 1px solid #000 !important; width: 33.33%;"></td>
-        </tr>
-    </table>
-
-    <!-- Notes Section (5 Fixed Lines) -->
-    <div style="margin-top: 30px;">
-        <div style="font-size: 9pt; font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">NOTES / REMARKS:</div>
-        <div v-for="n in 5" :key="'ln-'+n" class="note-line" style="border-bottom: 1px solid #ccc; height: 25px; margin-bottom: 5px;"></div>
-    </div>
-
-    <!-- Signature Signatories -->
-    <div style="margin-top: 60px;">
-        <table style="width: 100%; border: none !important; border-collapse: collapse;">
+        <!-- Date Metadata Table -->
+        <table style="width: 100%; margin-bottom: 25px; background: #f9f9f9; border: 1px solid #000;">
             <tr>
-                <td v-for="label in ['Requested By', 'Verified By', 'Approved By']" :key="label" style="border: none !important; width: 33.33%; padding: 0 15px;">
-                    <div style="height: 40px; border-bottom: 2px solid #000;"></div>
-                    <div class="sig-name-line" style="text-align: center; font-size: 9pt; font-weight: bold; text-transform: uppercase; margin-top: 5px;">{{ label }}</div>
+                <td style="padding: 10px; border-right: 1px solid #000; width: 50%;">
+                    <div style="font-size: 8pt; color: #555; text-transform: uppercase;">Date Requested</div>
+                    <div style="font-size: 11pt; font-weight: bold;">{{ formatPrintDate(header.date) }}</div>
+                </td>
+                <td style="padding: 10px; width: 50%;">
+                    <div style="font-size: 8pt; color: #555; text-transform: uppercase;">Expected Due Date</div>
+                    <div style="font-size: 11pt; font-weight: bold; color: #d63384;">{{ formatPrintDate(header.dueDate) }}</div>
                 </td>
             </tr>
         </table>
-    </div>
-</div>
+
+        <!-- SECTION 1: ENTITIES (Grouped similar to Code 2) -->
+      <div style="margin-bottom: 20px;">
+
+      <table style="width: 100%; border: 1px solid #000; border-collapse: collapse; table-layout: fixed;">
+        <tr>
+          <td style="border: 1px solid #000; padding: 10px; width: 50%;">
+            <div style="font-size: 7pt; color: #555; font-weight: bold; text-transform: uppercase;">Payor Name</div>
+            <div style="font-size: 10pt; font-weight: bold;">{{ particulars['PAYOR NAME'] || '—' }}</div>
+          </td>
+          <td style="border: 1px solid #000; padding: 10px; width: 50%;">
+            <div style="font-size: 7pt; color: #555; font-weight: bold; text-transform: uppercase;">Payee Name</div>
+            <div style="font-size: 10pt; font-weight: bold;">{{ particulars['PAYEE NAME'] || '—' }}</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid #000; padding: 10px; width: 50%;">
+            <div style="font-size: 7pt; color: #555; font-weight: bold; text-transform: uppercase;">Property</div>
+            <div style="font-size: 10pt; font-weight: bold;">{{ particulars['PROPERTY'] || '—' }}</div>
+          </td>
+          <td style="border: 1px solid #000; padding: 10px; width: 50%;">
+            <div style="font-size: 7pt; color: #555; font-weight: bold; text-transform: uppercase;">Location</div>
+            <div style="font-size: 10pt; font-weight: bold;">{{ particulars['LOCATION'] || '—' }}</div>
+          </td>
+        </tr>
+      </table>
     </div>
 
-    <!-- Search Result Modal (Existing) -->
-    <div v-if="isSearchModalOpen" class="modal fade show d-block" style="background: rgba(0,0,0,0.5);">
-        <div class="modal-dialog modal-xl modal-dialog-centered"><div class="modal-content"><div class="modal-header bg-primary text-white">Matches Found</div><div class="modal-body p-0">
-        <table class="table table-hover mb-0"><thead><tr><th>RFP</th><th>Payee</th><th>Amount</th><th>Action</th></tr></thead>
-        <tbody><tr v-for="res in searchResults" :key="res['RFP|PEF NO.']"><td>{{ res['RFP|PEF NO.'] }}</td><td>{{ res['PAYEE NAME'] }}</td><td>{{ res['SOA AMOUNT'] }}</td><td><button @click="selectSearchResult(res)" class="btn btn-sm btn-primary">Select</button></td></tr></tbody></table>
-        </div></div></div>
-    </div>
-  `,
 
+        <!-- SECTION 2: FINANCIALS & STATUS -->
+        <div style="margin-bottom: 20px;">
+      <table style="width: 100%; border: 1px solid #000; border-collapse: collapse; table-layout: fixed;">
+        <tr>
+          <td style="border: 1px solid #000; padding: 10px; width: 20%;">
+            <div style="font-size: 7pt; color: #555; font-weight: bold; text-transform: uppercase;">Contract Amount(Peso)</div>
+            <div style="font-size: 11pt; font-weight: bold; color: #0d6efd;">{{ particulars['CONTRACT AMOUNT'] || '0.00' }}</div>
+          </td>
+
+          <td style="border: 1px solid #000; padding: 10px; width: 20%;">
+            <div style="font-size: 7pt; color: #555; font-weight: bold; text-transform: uppercase;">Invoice No.</div>
+            <div style="font-size: 9pt; font-weight: bold;">{{ header.invoiceNo || '—' }}</div>
+          </td>
+
+          <td style="border: 1px solid #000; padding: 10px; width: 20%;">
+            <div style="font-size: 7pt; color: #555; font-weight: bold; text-transform: uppercase;">SOA Amount(Peso)</div>
+            <div style="font-size: 11pt; font-weight: bold; color: #0d6efd;">{{ particulars['SOA AMOUNT'] || '0.00' }}</div>
+          </td>
+
+          <td style="border: 1px solid #000; padding: 10px; width: 20%;">
+            <div style="font-size: 7pt; color: #555; font-weight: bold; text-transform: uppercase;">General Status</div>
+            <div style="font-size: 9pt; font-weight: bold;">{{ particulars['GENERAL STATUS'] || '—' }}</div>
+          </td>
+
+          <td style="border: 1px solid #000; padding: 10px; width: 20%;">
+            <div style="font-size: 7pt; color: #555; font-weight: bold; text-transform: uppercase;">Sector</div>
+            <div style="font-size: 9pt; font-weight: bold;">{{ particulars['SECTOR'] || '—' }}</div>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+
+        <!-- SECTION 3: BILLING PERIOD & OTHER DETAILS -->
+        <div style="margin-bottom: 25px;">
+            <table style="width: 100%; border: 1px solid #000; border-collapse: collapse;">
+                <tr style="background-color: #fafafa;">
+                    <td style="border: 1px solid #000; padding: 8px;">
+                        <div style="font-size: 7pt; color: #777;">YEAR</div>
+                        <div style="font-weight: bold;">{{ particulars['YEAR'] }}</div>
+                    </td>
+                    <td style="border: 1px solid #000; padding: 8px;">
+                        <div style="font-size: 7pt; color: #777;">MONTH</div>
+                        <div style="font-weight: bold;">{{ particulars['MONTH'] }}</div>
+                    </td>
+                    <td style="border: 1px solid #000; padding: 8px;">
+                        <div style="font-size: 7pt; color: #777;">BILLING PERIOD</div>
+                        <div style="font-weight: bold;">{{ particulars['BILLING PERIOD'] }}</div>
+                    </td>
+                    <td style="border: 1px solid #000; padding: 8px;">
+                        <div style="font-size: 7pt; color: #777;">CONTRACT NO</div>
+                        <div style="font-weight: bold;">{{ particulars['CONTRACT NO'] }}</div>
+                    </td>
+                    <td style="border: 1px solid #000; padding: 8px;">
+                        <div style="font-size: 7pt; color: #777;">SERVICE KIND</div>
+                        <div style="font-weight: bold;">{{ particulars['KINDS OF SERVICE'] }}</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Purpose / Remarks (Like the Textarea in Code 2) -->
+        <div style="margin-top: 20px;">
+            <div style="font-size: 9pt; font-weight: bold; color: #555; margin-bottom: 5px;">PURPOSE / REMARKS:</div>
+            <div style="min-height: 80px; padding: 12px; border: 1px dashed #777; border-radius: 4px; font-size: 10pt; line-height: 1.5; color: #222; background-color: #fff;">
+                {{ header.remarks || 'No remarks provided.' }}
+            </div>
+        </div>
+
+        <!-- Signature Signatories -->
+        <div style="margin-top: 60px;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td v-for="label in ['Prepared By', 'Approved By']" :key="label" style="width: 33.33%; padding: 0 15px;">
+                        <div style="text-align: center;">
+                            <div style="height: 40px; border-bottom: 2px solid #000; width: 100%; margin-bottom: 8px;"></div>
+                            <div style="font-size: 8.5pt; font-weight: bold; text-transform: uppercase;">{{ label }}</div>
+                            <div style="font-size: 7pt; color: #888;">(Signature Over Printed Name)</div>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+        <!-- Search Result Modal (Existing) -->
+        <div v-if="isSearchModalOpen" class="modal fade show d-block" style="background: rgba(0,0,0,0.5);">
+            <div class="modal-dialog modal-xl modal-dialog-centered"><div class="modal-content"><div class="modal-header bg-primary text-white">Matches Found</div><div class="modal-body p-0">
+            <!-- Inside the Search Result Modal Table in Index.html -->
+              <table class="table table-hover mb-0">
+                  <thead>
+                      <tr>
+                          <th>RFP/PEF</th>
+                          <th>Invoice</th> <!-- Added this to modal -->
+                          <th>Payee</th>
+                          <th>Amount</th>
+                          <th>Tab</th> <!-- Added this to show which tab it's from -->
+                          <th>Action</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      <tr v-for="(res, index) in searchResults" :key="index">
+                          <td>{{ res['RFP|PEF NO.'] }}</td>
+                          <td>{{ res['INVOICE NO.'] }}</td>
+                          <td>{{ res['PAYEE NAME'] }}</td>
+                          <td class="fw-bold">{{ res['SOA AMOUNT'] }}</td>
+                          <td><span class="badge bg-light text-dark border">{{ res['META_TAB_NAME'] }}</span></td>
+                          <td><button @click="selectSearchResult(res)" class="btn btn-sm btn-primary">Select</button></td>
+                      </tr>
+                  </tbody>
+              </table>
+            </div></div></div>
+
+        </div>
+        <!-- Modal for Others Detail -->
+    <div v-if="othersModal.isOpen" class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.6); z-index: 2000;">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header bg-warning text-dark border-0">
+                    <h6 class="modal-title fw-bold"><i class="bi bi-info-circle me-2"></i> Specify "Others"</h6>
+                </div>
+                <div class="modal-body">
+                    <p class="tiny text-muted mb-2">Please provide a brief reason for selecting "Others":</p>
+                    <textarea 
+                        class="form-control form-control-sm" 
+                        v-model="othersModal.detail" 
+                        rows="3" 
+                        placeholder="Enter details..." 
+                        maxlength="100">
+                    </textarea>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-sm btn-light" @click="closeOthersModal">Cancel</button>
+                    <button type="button" class="btn btn-sm btn-primary" @click="saveOthersDetail" :disabled="!othersModal.detail">Confirm</button>
+                </div>
+            </div>
+        </div>
+  </div>`,
         data() {
           return {
             showErrors: false,
-            maxTotalSizeBytes: 15 * 1024 * 1024, // 15,728,640 bytes
+            maxTotalSizeBytes: 10 * 1024 * 1024, // 15,728,640 bytes
             submissionMode: "MANUAL", // Default: "MANUAL", options: "GENERATED", "FETCHED"
-
+            searchType: "",
+            fileTypeLabels: [],
+            activeLabelDropdown: null,
+            isLabelConfigValid: false,
+            isServiceKindOpen: false,
+            othersModal: {
+              isOpen: false,
+              activeIndex: null,
+              sourceField: null, // New: track if 'attachment' or 'service'
+              detail: ""
+            },
             // 1. FORM HEADER DATA (Payload for Submission)
             header: {
               rfpNo: "",
@@ -1547,14 +1765,12 @@
               secondaryEmails: "",
               remarks: "",
             },
-
             // 2. UI STATE CONTROLS
             isSourceListOpen: false,
             isPrimaryListOpen: false,
             isSecondaryListOpen: false,
             isSearchModalOpen: false,
             isSubmitting: false,
-
             // 3. SEARCH & SUGGESTIONS
             sourceFiles: [], // Array of {name, url, tabs} from backend
             selectedSourceObj: null, // The full object of the currently selected file
@@ -1562,7 +1778,6 @@
             secondaryQuery: "",
             suggestedEmails: [],
             searchResults: [], // Results from performStrictSearch
-
             // 4. TRANSACTION & TABLE CONFIG
             attachments: [], // Changed to array for multi-file
             maxFiles: 5,
@@ -1577,6 +1792,7 @@
               "KINDS OF SERVICE",
               "CONTRACT NO",
               "CONTRACT AMOUNT",
+              "INVOICE NO.",
               "BILLING PERIOD",
               "SOA AMOUNT",
               "GENERAL STATUS",
@@ -1585,82 +1801,79 @@
             cursorIndex: 0, // Navigation for dropdowns
           };
         },
+        watch: {
+          // Deep watch the header and particulars objects
+          header: {
+            handler(val) {
+              this.saveToLocalStorage();
+            },
+            deep: true
+          },
+          particulars: {
+            handler(val) {
+              this.saveToLocalStorage();
+            },
+            deep: true
+          }
+        },
         computed: {
-          
           totalSizeMB() {
-              const totalBytes = this.attachments.reduce((sum, f) => sum + (f.size || 0), 0);
-              return (totalBytes / (1024 * 1024)).toFixed(2);
+            const totalBytes = this.attachments.reduce((sum, f) => sum + (f.size || 0), 0);
+            return (totalBytes / (1024 * 1024)).toFixed(2);
           },
           // Filtered Primary list (shows all if empty and focused)
-           filteredPrimarySuggestions() {
-              const query = (this.header.primaryEmail || "").toLowerCase();
-              
-              // Identify emails currently in the Secondary Recipient string to exclude them
-              const existingSecondaries = (this.header.secondaryEmails || "")
-                .split(",")
-                .map(e => e.trim().toLowerCase())
-                .filter(e => e !== "");
-
-              return this.suggestedEmails.filter((email) => {
-                const cleanEmail = email.toLowerCase().trim();
-                const isMatch = !query || cleanEmail.includes(query);
-                
-                // EXCLUSION LOGIC: Cannot suggest if it's already in the Secondary field
-                const isNotAlreadySecondary = !existingSecondaries.includes(cleanEmail);
-                
-                return isMatch && isNotAlreadySecondary;
-              });
-            },
-
+          filteredPrimarySuggestions() {
+            const query = (this.header.primaryEmail || "").toLowerCase();
+            // Identify emails currently in the Secondary Recipient string to exclude them
+            const existingSecondaries = (this.header.secondaryEmails || "")
+              .split(",")
+              .map(e => e.trim().toLowerCase())
+              .filter(e => e !== "");
+            return this.suggestedEmails.filter((email) => {
+              const cleanEmail = email.toLowerCase().trim();
+              const isMatch = !query || cleanEmail.includes(query);
+              // EXCLUSION LOGIC: Cannot suggest if it's already in the Secondary field
+              const isNotAlreadySecondary = !existingSecondaries.includes(cleanEmail);
+              return isMatch && isNotAlreadySecondary;
+            });
+          },
           // Filtered Secondary list based on what is after the last comma
           filteredSecondarySuggestions() {
             const query = (this.secondaryQuery || "").trim().toLowerCase();
-            
             // Identify Primary email to exclude it
             const primaryEmail = (this.header.primaryEmail || "").trim().toLowerCase();
-
             // Identify already added secondary emails in the current string to prevent double-suggesting
             const currentSecondariesInInput = (this.header.secondaryEmails || "")
               .split(",")
               .map(e => e.trim().toLowerCase())
               .filter(e => e !== "");
-
             return this.suggestedEmails.filter((email) => {
               const cleanEmail = email.toLowerCase().trim();
-              
               // 1. Search Logic (Fragment matches typing)
               const isMatch = !query || cleanEmail.includes(query);
-              
               // 2. Exclusion: Cannot suggest if it is the Primary Email
               const isNotPrimary = cleanEmail !== primaryEmail;
-              
               // 3. Exclusion: Cannot suggest if it's already in the Secondary string
               const isNotAlreadySecondary = !currentSecondariesInInput.includes(cleanEmail);
-
               return isMatch && isNotPrimary && isNotAlreadySecondary;
             });
           },
-          
-
           filteredSourceFiles() {
             const files = this.sourceFiles || [];
             const search = (this.header.sourceFileName || "")
               .toLowerCase()
               .trim();
-
             // If the list is open and nothing is typed, or the list was JUST opened
             // we return all files.
             if (!search) {
               return files;
             }
-
             // Filter based on input
             const results = files.filter((file) => {
               const fileName = (file.name || "").toLowerCase();
               const tabName = (file.tabName || "").toLowerCase();
               return fileName.includes(search) || tabName.includes(search);
             });
-
             // UX FIX: If search matches exactly one item (the selected one),
             // but the user just clicked it, show ALL files so they can switch.
             if (
@@ -1670,7 +1883,6 @@
             ) {
               return files;
             }
-
             return results;
           },
           minDueDate() {
@@ -1678,7 +1890,6 @@
           },
           isSecurityValidated() {
             const hasInvoice = !!this.header.invoiceNo?.trim();
-
             // Optional: Only validate due date if the user has manually changed it
             if (!this.header.dueDate) return true;
             const sel = new Date(this.header.dueDate).setHours(0, 0, 0, 0);
@@ -1687,58 +1898,159 @@
           },
         },
         mounted() {
+          this.fetchFileTypeLabels();
           this.fetchSuggestedEmails();
           this.fetchSourceFiles();
-
+          // --- NEW CODE: LOAD DATA FROM STORAGE ---
+          const savedData = localStorage.getItem('rfp_form_draft');
+          if (savedData) {
+            try {
+              const parsed = JSON.parse(savedData);
+              this.header = parsed.header;
+              this.particulars = parsed.particulars;
+              this.submissionMode = parsed.submissionMode || "MANUAL";
+              console.log("Draft loaded from local storage");
+            } catch (e) {
+              console.error("Error loading draft", e);
+            }
+          }
+          // ----------------------------------------
           document.addEventListener("click", (e) => {
-            // Handle Source File closing
-            if (!e.target.closest(".custom-select-wrapper")) {
-              this.isSourceListOpen = false;
+            if (!e.target.closest(".custom-select-wrapper")) this.isSourceListOpen = false;
+            if (!e.target.closest(".primary-email-wrapper")) this.isPrimaryListOpen = false;
+            if (!e.target.closest(".secondary-email-wrapper")) this.isSecondaryListOpen = false;
+            // This looks for the wrapper class. Make sure it matches the div in the template!
+            if (!e.target.closest(".notes-dropdown-container")) {
+              this.activeLabelDropdown = null;
             }
-            // Handle Primary closing
-            if (!e.target.closest(".primary-email-wrapper")) {
-              this.isPrimaryListOpen = false;
-            }
-            // Handle Secondary closing
-            if (!e.target.closest(".secondary-email-wrapper")) {
-              this.isSecondaryListOpen = false;
+            if (!e.target.closest(".service-dropdown-container")) {
+              this.isServiceKindOpen = false;
             }
           });
         },
-
         methods: {
-
-             restrictToNumbers(field) {
-        let val = this.particulars[field];
-        // Remove everything except numbers and a single decimal point
-        val = val.replace(/[^0-9.]/g, '');
-        
-        // Prevent multiple decimal points (e.g., 10.5.2 -> 10.52)
-        const parts = val.split('.');
-        if (parts.length > 2) {
-            val = parts[0] + '.' + parts.slice(1).join('');
-        }
-        
-        this.particulars[field] = val;
-    },
+          selectServiceKind(label) {
+            this.particulars['KINDS OF SERVICE'] = label;
+            this.isServiceKindOpen = false;
+            if (label.toUpperCase() === 'OTHERS') {
+              this.othersModal.sourceField = 'service';
+              this.othersModal.activeIndex = null;
+              this.othersModal.detail = "";
+              this.othersModal.isOpen = true;
+            }
+          },
+          // Filter labels based on user input for a specific file
+          getFilteredLabels(query) {
+            if (!query) return this.fileTypeLabels;
+            const search = query.toLowerCase();
+            return this.fileTypeLabels.filter(label =>
+              label.toLowerCase().includes(search)
+            );
+          },
+          // Selection logic
+          selectLabel(index, label) {
+            this.attachments[index].notes = label;
+            this.activeLabelDropdown = null; // Close dropdown
+            this.handleLabelChange(index); // Trigger 'OTHERS' check
+          },
+          // Submission helper to ensure user chose an accurate label
+          isLabelValid(noteValue) {
+            if (!noteValue) return false;
+            const val = noteValue.trim().toUpperCase();
+            // Valid if matches exactly from list OR is the processed 'OTHERS' string
+            const matchFound = this.fileTypeLabels.some(l => l.toUpperCase() === val);
+            const isProcessedOthers = val.startsWith("OTHERS:");
+            return matchFound || isProcessedOthers;
+          },
+          fetchFileTypeLabels() {
+            google.script.run.withSuccessHandler((res) => {
+              if (res === null) {
+                this.isLabelConfigValid = false;
+                this.$root.showCustomAlert("System Config Error", "The required 'FILE NOTES' source tab is missing. Please contact admin.", "danger");
+              } else {
+                this.fileTypeLabels = res;
+                this.isLabelConfigValid = true;
+              }
+            }).getFileTypeLabels();
+          },
+          // 2. Trigger check when user selects/types a label
+          handleLabelChange(index) {
+            const file = this.attachments[index];
+            if (file.notes.toUpperCase() === 'OTHERS') {
+              this.othersModal.sourceField = 'attachment'; // Added
+              this.othersModal.activeIndex = index;
+              this.othersModal.detail = "";
+              this.othersModal.isOpen = true;
+            }
+          },
+          selectLabel(index, label) {
+            this.attachments[index].notes = label;
+            this.activeLabelDropdown = null;
+            this.handleLabelChange(index); // This calls the update above
+          },
+          // 3. Confirm detail for 'Others' category
+          saveOthersDetail() {
+            const detail = this.othersModal.detail.trim() || "Unspecified Detail";
+            const formattedNote = `OTHERS: ${detail.toUpperCase()}`;
+            if (this.othersModal.sourceField === 'attachment' && this.othersModal.activeIndex !== null) {
+              // Saving to specific file attachment
+              this.attachments[this.othersModal.activeIndex].notes = formattedNote;
+            } else if (this.othersModal.sourceField === 'service') {
+              // Saving to the particulars grid field
+              this.particulars['KINDS OF SERVICE'] = formattedNote;
+            }
+            this.closeOthersModal();
+          },
+          closeOthersModal() {
+            this.othersModal.isOpen = false;
+            this.othersModal.activeIndex = null;
+            this.othersModal.sourceField = null; // Clear field tracker
+            this.othersModal.detail = "";
+          },
+          saveToLocalStorage() {
+            const dataToSave = {
+              header: this.header,
+              particulars: this.particulars,
+              submissionMode: this.submissionMode
+            };
+            localStorage.setItem('rfp_form_draft', JSON.stringify(dataToSave));
+          },
+          formatPrintDate(dateString) {
+            if (!dateString) return "—";
+            const date = new Date(dateString);
+            // Use Intl.DateTimeFormat for "Jan 6, 2001" format
+            return new Intl.DateTimeFormat('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            }).format(date);
+          },
+          restrictToNumbers(field) {
+            let val = this.particulars[field];
+            // Remove everything except numbers and a single decimal point
+            val = val.replace(/[^0-9.]/g, '');
+            // Prevent multiple decimal points (e.g., 10.5.2 -> 10.52)
+            const parts = val.split('.');
+            if (parts.length > 2) {
+              val = parts[0] + '.' + parts.slice(1).join('');
+            }
+            this.particulars[field] = val;
+          },
           // PRIMARY LOGIC
           selectPrimaryEmail(email) {
             this.header.primaryEmail = email;
             this.isPrimaryListOpen = false;
           },
-
           // SECONDARY LOGIC
           handleSecondaryFocus() {
             this.updateSecondaryQuery();
             this.isSecondaryListOpen = true;
           },
-
           updateSecondaryQuery() {
             const input = this.header.secondaryEmails || "";
             const parts = input.split(",");
             this.secondaryQuery = parts[parts.length - 1].trim();
           },
-
           selectSecondaryEmail(email) {
             const input = this.header.secondaryEmails || "";
             const parts = input.split(",");
@@ -1749,36 +2061,40 @@
             this.secondaryQuery = "";
             this.isSecondaryListOpen = true; // Keep open if they want to add another? or false to close.
           },
-
           fetchDataBySearch(searchSource) {
+            this.searchType = searchSource;
             if (!this.header.sourceFileName) {
               return this.$root.showCustomAlert("Warning", "Please select a Source File first.", "warning");
             }
-
             // Define exactly what values we send to the backend
             let rfpToSearch = "";
             let invToSearch = "";
-
             if (searchSource === 'RFP') {
-                rfpToSearch = this.header.rfpNo;
+              rfpToSearch = this.header.rfpNo;
             } else {
-                invToSearch = this.header.invoiceNo;
-                // If we are searching by invoice and an RFP was generated, 
-                // we intentionally don't send the RFP number to prioritize finding the invoice record.
+              invToSearch = this.header.invoiceNo;
+              // If we are searching by invoice and an RFP was generated, 
+              // we intentionally don't send the RFP number to prioritize finding the invoice record.
             }
-
             this.$root.triggerLoading("Searching record(s)...", 0);
-
             google.script.run
               .withSuccessHandler((res) => {
                 this.$root.isLoading = false;
-
                 if (res.status === "ALREADY_PAID") {
-                  // If we find an existing record and it's paid, keep particulars clean
-                  if (this.submissionMode !== 'GENERATED') this.initParticulars();
-                  return this.$root.showCustomAlert("Action Blocked", res.message, "warning");
+                  // 1. Clear the particulars to ensure no "paid" data is shown
+                  if (this.submissionMode !== 'GENERATED') {
+                    this.initParticulars();
+                    // 2. Clear the specific input used to search so they can't try again with the same value
+                    if (searchSource === 'RFP') this.header.rfpNo = "";
+                    else this.header.invoiceNo = "";
+                  }
+                  // 3. Inform the user with a strong alert
+                  return this.$root.showCustomAlert(
+                    "Action Blocked: Already Paid",
+                    res.message || "This record has a 'PAID' status and cannot be edited.",
+                    "warning"
+                  );
                 }
-
                 if (res.status === "FOUND") {
                   const matches = res.data;
                   if (matches.length === 1) {
@@ -1786,9 +2102,9 @@
                   } else if (matches.length > 1) {
                     this.searchResults = matches;
                     this.isSearchModalOpen = true;
-                  } else {
-                    this.$root.showCustomAlert("Not Found", "No matching records found for this " + searchSource, "info");
                   }
+                } else if (res.status === "NOT_FOUND") {
+                  this.$root.showCustomAlert("Not Found", "No matching records found for this " + searchSource, "info");
                 }
               })
               .withFailureHandler((err) => {
@@ -1801,15 +2117,12 @@
                 invToSearch
               );
           },
-
           selectSourceFile(file) {
             // Sets visible name for the input box
             this.header.sourceFileName = file.name;
-
             // CRITICAL: Set the Tab Name and File URL to the header object
             this.header.sourceTabName = file.tabName;
             this.header.sourceFileUrl = file.url;
-
             this.selectedSourceObj = file;
             this.isSourceListOpen = false;
             console.log("Selected URL:", this.header.sourceFileUrl);
@@ -1818,7 +2131,6 @@
             this.populateForm(record);
             this.isSearchModalOpen = false;
           },
-
           /**
            * Synchronizes search results into the form.
            * Fixed: Maintains "GENERATED" state and prevents RFP overwrites when 
@@ -1828,76 +2140,65 @@
             // BUG FIX 1: Do not change status to 'FETCHED' if the user just generated an RFP.
             // This ensures the RFP search button stays disabled (grayed out).
             if (this.submissionMode !== "GENERATED") {
-                this.submissionMode = "FETCHED";
+              this.submissionMode = "FETCHED";
             }
-
             // BUG FIX 2: Protect Header Identification Fields
             // We only adopt the searched record's RFP number if we aren't in 'GENERATED' mode.
             if (raw["RFP|PEF NO."] && this.submissionMode !== "GENERATED") {
               this.header.rfpNo = raw["RFP|PEF NO."];
             }
-            
             // We update the invoice number if found, but don't clear it if search is empty
             if (raw["INVOICE NO."]) {
               this.header.invoiceNo = raw["INVOICE NO."];
             }
-
             // Handle multiple possible column naming conventions for dates
             const fetchedDueDate = raw["DUE DATE"] || raw["DATE DUE"];
             if (fetchedDueDate) {
               this.header.dueDate = fetchedDueDate;
             }
-
             // 2. Metadata Synchronization
             // Prioritize source metadata returned by the advanced search logic
             this.header.sourceFileUrl =
               raw["META_SOURCE_URL"] || this.selectedSourceObj?.url || "N/A";
-
             this.header.sourceTabName =
               raw["META_TAB_NAME"] ||
               this.selectedSourceObj?.tabName ||
               "MANUAL_ENTRY";
-
             // If a source was picked but filename display is missing, restore it
             if (!this.header.sourceFileName && this.selectedSourceObj) {
               this.header.sourceFileName =
                 this.selectedSourceObj.fileName || this.selectedSourceObj.name;
             }
-
             // 3. Mapping Particulars (Table Fields)
             const formattedData = {};
             this.tableFields.forEach((field) => {
               // Extract the value from the database object
               let val =
-                raw[field] !== undefined && raw[field] !== null
-                  ? raw[field]
-                  : "";
-
+                raw[field] !== undefined && raw[field] !== null ?
+                raw[field] :
+                "";
               // Apply financial formatting to amount fields
               if (this.isAmountField(field) && val !== "") {
                 const cleanVal = String(val).replace(/[^0-9.-]/g, ""); // Support numeric values
                 const num = parseFloat(cleanVal);
-
-                val = isNaN(num)
-                  ? ""
-                  : num.toLocaleString("en-US", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    });
+                val = isNaN(num) ?
+                  "" :
+                  num.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  });
               }
               formattedData[field] = val;
             });
-
             // Set the reactively bound particulars object
             this.particulars = formattedData;
-
             // UI Success Feedback
             if (this.$root && typeof this.$root.showCustomAlert === "function") {
               this.$root.showCustomAlert(
                 "Record Synced",
-                this.submissionMode === "GENERATED" 
-                  ? "Record data merged with your generated RFP number."
-                  : "All record details have been successfully loaded.",
+                this.submissionMode === "GENERATED" ?
+                "Record data merged with your generated RFP number." :
+                "All record details have been successfully loaded.",
                 "success"
               );
             }
@@ -1921,11 +2222,9 @@
             const amountFields = ["CONTRACT AMOUNT", "SOA AMOUNT"];
             return amountFields.includes(field.toUpperCase());
           },
-
           /**
            * Applies the comma separators and 2 decimal places when user leaves the field
            */
-
           fetchSuggestedEmails() {
             google.script.run
               .withSuccessHandler((res) => {
@@ -1937,26 +2236,23 @@
               })
               .getPreviousParticipantEmails();
           },
-
           generateRfp() {
-             
-              this.$root.triggerLoading("Generating RFP...", 0);
-              google.script.run
-                  .withSuccessHandler((id) => {
-                      this.$root.isLoading = false;
-                      this.header.rfpNo = id;
-                      this.submissionMode = "GENERATED"; // THIS DISABLES THE RFP SEARCH BUTTON
-                      this.initParticulars();
-                      if (!this.header.dueDate)
-                          this.header.dueDate = new Date().toISOString().split("T")[0];
-                  })
-                  .withFailureHandler((err) => {
-                      this.$root.isLoading = false;
-                      this.$root.showCustomAlert("Error", "Generation failed: " + err, "error");
-                  })
-                  .generateRfpNumber();
+            this.$root.triggerLoading("Generating RFP...", 0);
+            google.script.run
+              .withSuccessHandler((id) => {
+                this.$root.isLoading = false;
+                this.header.rfpNo = id;
+                this.submissionMode = "GENERATED"; // THIS DISABLES THE RFP SEARCH BUTTON
+                this.initParticulars();
+                if (!this.header.dueDate)
+                  this.header.dueDate = new Date().toISOString().split("T")[0];
+              })
+              .withFailureHandler((err) => {
+                this.$root.isLoading = false;
+                this.$root.showCustomAlert("Error", "Generation failed: " + err, "error");
+              })
+              .generateRfpNumber();
           },
-
           isAmountField(f) {
             return ["CONTRACT AMOUNT", "SOA AMOUNT"].includes(f);
           },
@@ -1977,285 +2273,231 @@
             }
           },
           handleFileChange(e) {
-              const file = e.target.files[0];
-              if (!file) return;
-
-              if (file.type !== "application/pdf") {
-                  return this.$root.showCustomAlert("Error", "Only PDF files are allowed.", "warning");
-              }
-
-              // 1. Calculate Current Cumulative Size
-              const currentTotal = this.attachments.reduce((sum, f) => sum + (f.size || 0), 0);
-              const newSize = file.size;
-
-              // 2. Size Validation (Combined total)
-              if (currentTotal + newSize > this.maxTotalSizeBytes) {
-                  const remainingSpace = ((this.maxTotalSizeBytes - currentTotal) / (1024 * 1024)).toFixed(2);
-                  return this.$root.showCustomAlert(
-                      "Attachment Too Large", 
-                      `Adding this file would exceed the 15MB total limit. You only have ${remainingSpace}MB remaining space.`, 
-                      "error"
-                  );
-              }
-
-              // 3. File Count Validation
-              if (this.attachments.length >= this.maxFiles) {
-                  return this.$root.showCustomAlert("Limit reached", "Maximum 5 files allowed.", "info");
-              }
-
-              const reader = new FileReader();
-              reader.onload = (f) => {
-                  this.attachments.push({
-                      name: file.name,
-                      type: file.type,
-                      size: file.size, // Essential to keep this to calculate totals
-                      base64: f.target.result.split(",")[1],
-                      notes: ""
-                  });
-                  e.target.value = ""; 
-              };
-              reader.readAsDataURL(file);
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.type !== "application/pdf") {
+              return this.$root.showCustomAlert("Error", "Only PDF files are allowed.", "warning");
+            }
+            // 1. Calculate Current Cumulative Size
+            const currentTotal = this.attachments.reduce((sum, f) => sum + (f.size || 0), 0);
+            const newSize = file.size;
+            // 2. Size Validation (Combined total)
+            if (currentTotal + newSize > this.maxTotalSizeBytes) {
+              const remainingSpace = ((this.maxTotalSizeBytes - currentTotal) / (1024 * 1024)).toFixed(2);
+              return this.$root.showCustomAlert(
+                "Attachment Too Large",
+                `Adding this file would exceed the 15MB total limit. You only have ${remainingSpace}MB remaining space.`,
+                "error"
+              );
+            }
+            // 3. File Count Validation
+            if (this.attachments.length >= this.maxFiles) {
+              return this.$root.showCustomAlert("Limit reached", "Maximum 5 files allowed.", "info");
+            }
+            const reader = new FileReader();
+            reader.onload = (f) => {
+              this.attachments.push({
+                name: file.name,
+                type: file.type,
+                size: file.size, // Essential to keep this to calculate totals
+                base64: f.target.result.split(",")[1],
+                notes: ""
+              });
+              e.target.value = "";
+            };
+            reader.readAsDataURL(file);
           },
           initParticulars() {
             const freshData = {};
             this.tableFields.forEach((field) => (freshData[field] = ""));
             this.particulars = freshData;
           },
-
-         submitForm() {
-          // 1. Capture Identity: Get the actual email used to login to the app
-          const appUserEmail = this.$root.currentUserEmail || "Unknown App User";
-
-          // 2. Enable error highlighting for validation feedback
-          this.showErrors = true;
-
-          // 3. Mandatory Header Validation
-          const hasRfp = !!this.header.rfpNo?.trim();
-          const hasInvoice = !!this.header.invoiceNo?.trim();
-          const hasDueDate = !!this.header.dueDate;
-
-          if (!hasRfp || !hasInvoice || !hasDueDate) {
-            return this.$root.showCustomAlert(
-              "Missing Information",
-              "Please ensure RFP No., Invoice No., and Due Date are filled.",
-              "warning"
-            );
-          }
-
-          // 4. Security/Date Validation
-          if (!this.isSecurityValidated) {
-            return this.$root.showCustomAlert(
-              "Invalid Date",
-              "The selected Due Date cannot be in the past.",
-              "error"
-            );
-          }
-
-          // 5. Particulars Grid Validation (All fields in the details section)
-          const missingFields = this.tableFields.filter(
-            (field) => !String(this.particulars[field] || "").trim()
-          );
-          if (missingFields.length > 0) {
-            return this.$root.showCustomAlert(
-              "Incomplete Particulars",
-              "All particulars fields must be completed before submission.",
-              "warning"
-            );
-          }
-
-          // 6. Attachment Logic (Check if exists + check if notes are mandatory)
-          if (!this.attachments || this.attachments.length === 0) {
-            return this.$root.showCustomAlert(
-              "Attachment Required",
-              "Please upload at least one PDF supporting document.",
-              "warning"
-            );
-          }
-
-          const hasInvalidNotes = this.attachments.some(f => !f.notes || f.notes.trim() === "");
-          if (hasInvalidNotes) {
-            return this.$root.showCustomAlert(
-              "Missing Descriptions",
-              "Please provide a Note/Description for every uploaded file (e.g., 'Invoice', 'Official Receipt').",
-              "warning"
-            );
-          }
-
-          // 7. Recipient Email Validation & Formatting
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          const primaryClean = (this.header.primaryEmail || "").trim();
-
-          if (!emailRegex.test(primaryClean)) {
-            return this.$root.showCustomAlert(
-              "Email Error",
-              "A valid Primary Recipient email is required.",
-              "warning"
-            );
-          }
-
-          const formattedParticipants = [
-            { email: primaryClean.toLowerCase(), tag: "Primary" }
-          ];
-
-          const secondaryRaw = (this.header.secondaryEmails || "").trim();
-          if (secondaryRaw) {
-            secondaryRaw.split(",").forEach(email => {
-              const clean = email.trim();
-              if (clean && emailRegex.test(clean)) {
-                formattedParticipants.push({
-                  email: clean.toLowerCase(),
-                  tag: "Secondary"
-                });
+          submitForm() {
+            // 1. Identify current session user
+            const appUserEmail = this.$root.currentUserEmail || "Unknown App User";
+            // 2. Enable UI error highlighting
+            this.showErrors = true;
+            // 3. Header Validation (Conditional RFP Logic)
+            const hasInvoice = !!this.header.invoiceNo?.trim();
+            const hasRfp = !!this.header.rfpNo?.trim();
+            const hasDueDate = !!this.header.dueDate;
+            // Determine if RFP is mandatory: 
+            // If search was NOT via Invoice, or if Invoice is empty, RFP must be present.
+            const isRfpOptional = (this.searchType === 'INVOICE' && hasInvoice);
+            const rfpCheckPassed = isRfpOptional || hasRfp;
+            if (!hasInvoice || !hasDueDate || !rfpCheckPassed) {
+              let errorMsg = "Please ensure Invoice No. and Due Date are filled.";
+              if (!rfpCheckPassed) {
+                errorMsg = "An RFP No. is required unless you have successfully searched via Invoice No.";
+              }
+              return this.$root.showCustomAlert(
+                "Missing Information",
+                errorMsg,
+                "warning"
+              );
+            }
+            // 4. Security/Date Validation
+            if (!this.isSecurityValidated) {
+              return this.$root.showCustomAlert(
+                "Invalid Date",
+                "The selected Due Date cannot be in the past.",
+                "error"
+              );
+            }
+            // 5. Particulars Grid Validation 
+            const internalFields = ["RFP|PEF NO.", "INVOICE NO.", "INVOICE NO"];
+            const missingFields = this.tableFields.filter(field => {
+              const isHeaderField = internalFields.includes(field.toUpperCase());
+              const value = String(this.particulars[field] || "").trim();
+              // If it's a header field (like RFP), we ignore it in this particulars loop
+              if (isHeaderField) return false;
+              return value === "";
+            });
+            // 6. Attachment Validation (Enforcing accuracy against source file)
+            if (!this.attachments || this.attachments.length === 0) {
+              return this.$root.showCustomAlert("Attachment Required", "Please upload at least one PDF document.", "warning");
+            }
+            // BLOCKER 1: Configuration Check
+            if (!this.isLabelConfigValid || this.fileTypeLabels.length === 0) {
+              return this.$root.showCustomAlert("System Error", "Document type list (FILE NOTES) is missing or could not be loaded. Submission is blocked.", "danger");
+            }
+            // BLOCKER 2: Mandatory and Accurate Note Check
+            const hasInvalidNotes = this.attachments.some((f) => {
+              const note = (f.notes || "").trim();
+              if (!note) return true; // Fail if empty
+              // Check if the typed note exists in the fileTypeLabels list
+              // (Ignoring case for flexibility, but enforcing content matching)
+              const exists = this.fileTypeLabels.some(label => label.toUpperCase() === note.toUpperCase());
+              // Support the "OTHERS" override logic you previously established
+              const isOthers = note.toUpperCase().startsWith("OTHERS:");
+              return !exists && !isOthers;
+            });
+            if (hasInvalidNotes) {
+              return this.$root.showCustomAlert(
+                "Invalid Note Selection",
+                "One or more file notes do not match the required document categories from the source list.",
+                "warning"
+              );
+            }
+            // 7. Participant Email Validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const primaryClean = (this.header.primaryEmail || "").trim();
+            if (!emailRegex.test(primaryClean)) {
+              return this.$root.showCustomAlert(
+                "Email Error",
+                "A valid Primary Recipient email is required.",
+                "warning"
+              );
+            }
+            const formattedParticipants = [{ email: primaryClean.toLowerCase(), tag: "Primary" }];
+            const secondaryRaw = (this.header.secondaryEmails || "").trim();
+            if (secondaryRaw) {
+              secondaryRaw.split(",").forEach(email => {
+                const clean = email.trim();
+                if (clean && emailRegex.test(clean)) {
+                  formattedParticipants.push({ email: clean.toLowerCase(), tag: "Secondary" });
+                }
+              });
+            }
+            // 8. Payload Preparation & Data Sanitization
+            this.isSubmitting = true;
+            this.$root.triggerLoading("Submitting your request...", 0);
+            // Deep clone data and strip commas from financial values
+            const finalParticulars = JSON.parse(JSON.stringify(this.particulars));
+            this.tableFields.forEach(f => {
+              if (this.isAmountField(f) && finalParticulars[f]) {
+                finalParticulars[f] = finalParticulars[f].toString().replace(/,/g, '');
               }
             });
-          }
-
-          // 8. Prepare for Submission State
-          this.isSubmitting = true;
-
-          // Determine specific success message based on the mode
-          let successTitle = "Request Recorded";
-          let successMessage = "";
-          if (this.submissionMode === "GENERATED") {
-            successMessage = "A new request has been submitted with a freshly generated RFP number.";
-          } else if (this.submissionMode === "FETCHED") {
-            successMessage = "The existing record data has been updated and processed successfully.";
-          } else {
-            successMessage = "The manual RFP entry has been successfully recorded and sent.";
-          }
-
-          // 9. Build Final Payload
-          const payload = {
-            header: this.header,
-            particulars: this.particulars,
-            attachments: this.attachments,
-            participants: formattedParticipants,
-            tableFields: this.tableFields,
-            userAppEmail: appUserEmail, // Uses correctly defined variable from step 1
-            meta: {
-              mode: this.submissionMode || "MANUAL",
-              timestamp: new Date().toISOString()
-            }
-          };
-
-          // 10. Execute Google Apps Script
-          google.script.run
-            .withSuccessHandler((res) => {
-              this.isSubmitting = false;
-
-              if (res.success) {
-                this.$root.showCustomAlert(successTitle, successMessage, "success");
-                // Clear the form after a successful hit
-                this.resetForm();
-                this.submissionMode = "MANUAL";
-              } else {
-                this.$root.showCustomAlert("Submission Failed", res.message, "danger");
+            const payload = {
+              header: this.header,
+              particulars: finalParticulars,
+              attachments: this.attachments,
+              participants: formattedParticipants,
+              tableFields: this.tableFields,
+              userAppEmail: appUserEmail,
+              meta: {
+                mode: this.submissionMode || "MANUAL",
+                timestamp: new Date().toISOString()
               }
-            })
-            .withFailureHandler((err) => {
-              this.isSubmitting = false;
-              this.$root.showCustomAlert("System Error", err.message, "danger");
-            })
-            .processSubmission(payload);
-        },
+            };
+            // 9. Execute Google Apps Script
+            google.script.run
+              .withSuccessHandler((res) => {
+                this.isSubmitting = false;
+                this.$root.isLoading = false;
+                if (res.success) {
+                  let successTitle = "Request Recorded";
+                  let successMessage = "";
+                  if (this.submissionMode === "GENERATED") {
+                    successTitle = "New Request Created";
+                    successMessage = `Request ${res.message} (RFP) has been submitted with a freshly generated ID.`;
+                  } else if (this.submissionMode === "FETCHED") {
+                    // DETECT IF SEARCH WAS VIA INVOICE
+                    if (this.searchType === "INVOICE") {
+                      successTitle = "Invoice Synced & Recorded";
+                      successMessage = `Request for Invoice ${this.header.invoiceNo} has been successfully updated and processed.`;
+                    } else {
+                      successTitle = "Record Synced & Updated";
+                      successMessage = `Request for RFP ${res.message} has been successfully updated and processed.`;
+                    }
+                  } else {
+                    successTitle = "Submission Successful";
+                    successMessage = `Manual payment request ${res.message} has been recorded successfully.`;
+                  }
+                  this.$root.showCustomAlert(successTitle, successMessage, "success");
+                  // Cleanup
+                  localStorage.removeItem('rfp_form_draft');
+                  this.resetForm();
+                  this.submissionMode = "MANUAL";
+                  this.searchType = ""; // Reset search tracker
+                } else {
+                  this.$root.showCustomAlert("Submission Failed", res.message, "danger");
+                }
+              })
+              .withFailureHandler((err) => {
+                this.isSubmitting = false;
+                this.$root.isLoading = false;
+                this.$root.showCustomAlert("System Error", "Communication failure: " + err.message, "danger");
+              })
+              .processSubmission(payload);
+          },
           resetForm() {
             this.showErrors = false;
-
             // 1. Reset Header Object
             this.header = {
-                rfpNo: "",
-                invoiceNo: "",
-                date: new Date().toISOString().split("T")[0], // Keep today's date
-                dueDate: "",
-                sourceFileName: "",
-                sourceTabName: "",
-                sourceFileUrl: "",
-                primaryEmail: "",
-                secondaryEmails: "",
-                remarks: "",
+              rfpNo: "",
+              invoiceNo: "",
+              date: new Date().toISOString().split("T")[0], // Keep today's date
+              dueDate: "",
+              sourceFileName: "",
+              sourceTabName: "",
+              sourceFileUrl: "",
+              primaryEmail: "",
+              secondaryEmails: "",
+              remarks: "",
             };
-
             // 2. Clear Particulars (the table details)
             this.initParticulars();
-
             // 3. NEW: Clear the Multi-File Attachments Array
             // This removes all 5 files and their associated notes
-            this.attachments = []; 
-
+            this.attachments = [];
             // 4. CRITICAL: Clear the physical file input from the browser
             // This allows the user to re-select the same file if they want
             if (this.$refs.fileInput) {
-                this.$refs.fileInput.value = "";
+              this.$refs.fileInput.value = "";
             }
-
             // 5. Reset all UI/Dropdown states
             this.isSubmitting = false;
             this.isSourceListOpen = false;
             this.isPrimaryListOpen = false;
             this.isSecondaryListOpen = false; // Added to ensure secondary dropdown closes
             this.isSearchModalOpen = false;
-
             // Reset search results if any
             this.searchResults = [];
-
+            localStorage.removeItem('rfp_form_draft');
+            this.searchType = "";
             console.log("Form reset: Multi-file attachments and all metadata cleared.");
-        },
-          executeSubmission() {
-            this.isSubmitting = true;
-            this.$root.triggerLoading("Submitting Request...", 0);
-
-            // Create a deep copy to avoid UI flickering during cleanup
-            const submissionData = JSON.parse(JSON.stringify(this.particulars));
-
-            // Remove commas from amount fields for database compatibility
-            this.tableFields.forEach((field) => {
-              if (this.isAmountField(field) && submissionData[field]) {
-                submissionData[field] = submissionData[field].replace(/,/g, "");
-              }
-            });
-
-            const payload = {
-              header: {
-                ...this.header,
-                payee: this.particulars["PAYEE NAME"],
-              },
-              attachment: this.attachment,
-              particulars: submissionData, // Cleaned data
-              tableFields: this.tableFields,
-              participants: this.finalParticipantPayload,
-            };
-
-            google.script.run
-              .withSuccessHandler((res) => {
-                this.isSubmitting = false;
-                this.$root.isLoading = false;
-                if (res.success) {
-                  this.$root.showCustomAlert(
-                    "Success",
-                    "RFP recorded successfully.",
-                    "success",
-                  );
-                  this.resetFormAfterSubmission();
-                } else {
-                  this.$root.showCustomAlert("Error", res.message, "error");
-                }
-              })
-              .processSubmission(payload);
-          },
-          resetFormAfterSubmission() {
-            this.showErrors = false;
-            this.header.rfpNo = "";
-            this.header.invoiceNo = ""; // Reset this too
-            this.header.dueDate = "";
-            this.header.primaryEmail = "";
-            this.header.secondaryEmails = "";
-            // Note: keeping sourceFileName is usually better for the user,
-            // but if you want it gone: this.header.sourceFileName = "";
-
-            this.initParticulars();
-            this.attachments = [];
-
-            if (this.$refs.fileInput) this.$refs.fileInput.value = "";
           },
           goBack() {
             this.$emit("navigate", "dashboard");
@@ -2337,7 +2579,6 @@
           }, 1000);
         },
       });
-
       app.mount("#app");
   </script>
 </body>
