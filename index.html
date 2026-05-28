@@ -335,7 +335,7 @@
                 <form @submit.prevent="submitLogin" id="loginForm">
                     <div class="mb-3">
                         <label class="form-label fw-semibold text-secondary small">EMAIL ADDRESS</label>
-                        <inpu type="email" name="email" class="form-control form-control-lg bg-light border-0 shadow-sm" v-model="credentials.email" placeholder="example@megaworld-lifestyle.com" autocomplete="username email" list="emailHistory" required>
+                        <input type="email" name="email" class="form-control form-control-lg bg-light border-0 shadow-sm" v-model="credentials.email" placeholder="example@megaworld-lifestyle.com" autocomplete="username email" list="emailHistory" required>
                         <datalist id="emailHistory">
                             <option v-for="email in suggestedEmails" :key="email" :value="email"></option>
                         </datalist>
@@ -1190,32 +1190,35 @@ const FormRequestView = {
                     </div>
 
                     <!-- RFP Section -->
-                      <div class="col-md-5">
-                        <label class="form-label fw-bold ...">
-                            RFP NO. <span v-if="searchType !== 'INVOICE'" class="text-danger">*</span>
-                        </label>
-                        <div class="input-group shadow-sm">
-                            <input type="text" class="form-control bg-light" 
-                                :class="{'is-invalid': showErrors && !header.rfpNo}" 
-                                v-model="header.rfpNo" 
-                                @input="submissionMode = 'MANUAL'"
-                                placeholder="Input RFP No" :disabled="isSubmitting">
+                     <!-- RFP Section (With Guidance Logic) -->
+<div class="col-md-5">
+  <label class="form-label fw-bold small text-uppercase text-secondary">
+    RFP NO. <span v-if="searchType !== 'INVOICE'" class="text-danger">*</span>
+  </label>
+  <div class="input-group shadow-sm">
+    <input type="text" class="form-control bg-light" 
+      :class="{'is-invalid': (showErrors && !header.rfpNo) || rfpError}" 
+      v-model="header.rfpNo" 
+      @input="rfpError = ''; submissionMode = 'MANUAL'"
+      placeholder="Input RFP No" 
+      :disabled="isSubmitting">
 
-                            <!-- RFP Search Button: Disabled if Generated -->
-                            <button class="btn btn-primary" type="button" 
-                                @click="fetchDataBySearch('RFP')" 
-                                :disabled="!header.sourceFileName || submissionMode === 'GENERATED' || !header.rfpNo">
-                                <i class="bi bi-search"></i>
-                            </button>
+    <!-- RFP Search Button -->
+    <button class="btn btn-primary" type="button" @click="fetchDataBySearch('RFP')" :disabled="isSubmitting">
+      <i class="bi bi-search"></i>
+    </button>
 
-                            <button class="btn btn-outline-primary" type="button" @click="generateRfp" :disabled="isSubmitting">
-                                <i class="bi bi-magic"></i> Generate
-                            </button>
-                        </div>
-                        <small v-if="submissionMode === 'GENERATED'" class="text-info font-monospace" style="font-size: 0.7rem;">
-                            <i class="bi bi-lock-fill"></i> Generated ID (Searching disabled)
-                        </small>
-                      </div>
+    <!-- Generate Button (Always enabled per instructions) -->
+    <button class="btn btn-outline-primary" type="button" @click="handleGenerateClick" :disabled="isSubmitting">
+      <i class="bi bi-magic"></i>
+    </button>
+  </div>
+
+  <!-- Guidance Error Message -->
+  <div v-if="rfpError" class="text-danger small fw-bold mt-1 animate__animated animate__headShake" style="font-size: 0.7rem;">
+    <i class="bi bi-exclamation-circle-fill"></i> {{ rfpError }}
+  </div>
+</div>
 
                       <!-- Invoice Section -->
                       <div class="col-md-4">
@@ -1224,11 +1227,12 @@ const FormRequestView = {
                             <input type="text" class="form-control bg-light" :class="{'is-invalid': showErrors && !header.invoiceNo}" v-model="header.invoiceNo" placeholder="Input Invoice No">
 
                             <!-- Invoice Search Button: Always active if Source is selected -->
-                            <button class="btn btn-primary" type="button" 
-                                @click="fetchDataBySearch('INVOICE')" 
-                                :disabled="!header.sourceFileName || !header.invoiceNo">
-                                <i class="bi bi-search"></i>
-                            </button>
+                            <!-- Invoice Search Button: Disabled if already successfully FETCHED -->
+<button class="btn btn-primary" type="button" 
+    @click="fetchDataBySearch('INVOICE')" 
+    :disabled="!header.sourceFileName || !header.invoiceNo || submissionMode === 'FETCHED'">
+    <i class="bi bi-search"></i>
+</button>
                         </div>
                       </div>
 
@@ -1667,20 +1671,25 @@ const FormRequestView = {
             </div>
         </div>
 
-        <!-- Signature Signatories -->
-        <div style="margin-top: 60px;">
-            <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                    <td v-for="label in ['Prepared By', 'Approved By']" :key="label" style="width: 33.33%; padding: 0 15px;">
-                        <div style="text-align: center;">
-                            <div style="height: 40px; border-bottom: 2px solid #000; width: 100%; margin-bottom: 8px;"></div>
-                            <div style="font-size: 8.5pt; font-weight: bold; text-transform: uppercase;">{{ label }}</div>
-                            <div style="font-size: 7pt; color: #888;">(Signature Over Printed Name)</div>
-                        </div>
-                    </td>
-                </tr>
-            </table>
-        </div>
+<!-- Signature Signatories (Updated) -->
+<div style="margin-top: 60px;">
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="width: 45%; padding: 0 15px;">
+                <div style="text-align: center;">
+                    <!-- Automatically shows the logged-in user name here -->
+                    <div style="font-size: 11pt; font-weight: bold; border-bottom: 2px solid #000; width: 100%; margin-bottom: 2px; padding-bottom: 5px;">
+                        {{ $root.currentUser || 'Not Available' }}
+                    </div>
+                    <div style="font-size: 8.5pt; font-weight: bold; text-transform: uppercase;">Prepared By</div>
+                    <div style="font-size: 7pt; color: #888;">(System Generated Signature)</div>
+                </div>
+            </td>
+            <!-- Approved By Removed and space left blank -->
+            <td style="width: 55%;"></td>
+        </tr>
+    </table>
+</div>
     </div>
 
         <!-- Search Result Modal (Existing) -->
@@ -1738,6 +1747,7 @@ const FormRequestView = {
   </div>`,
         data() {
           return {
+            rfpError: "",
             showErrors: false,
             maxTotalSizeBytes: 10 * 1024 * 1024, // 15,728,640 bytes
             submissionMode: "MANUAL", // Default: "MANUAL", options: "GENERATED", "FETCHED"
@@ -1746,6 +1756,7 @@ const FormRequestView = {
             activeLabelDropdown: null,
             isLabelConfigValid: false,
             isServiceKindOpen: false,
+            
             othersModal: {
               isOpen: false,
               activeIndex: null,
@@ -2062,61 +2073,88 @@ const FormRequestView = {
             this.isSecondaryListOpen = true; // Keep open if they want to add another? or false to close.
           },
           fetchDataBySearch(searchSource) {
-            this.searchType = searchSource;
-            if (!this.header.sourceFileName) {
-              return this.$root.showCustomAlert("Warning", "Please select a Source File first.", "warning");
-            }
-            // Define exactly what values we send to the backend
-            let rfpToSearch = "";
-            let invToSearch = "";
-            if (searchSource === 'RFP') {
-              rfpToSearch = this.header.rfpNo;
-            } else {
-              invToSearch = this.header.invoiceNo;
-              // If we are searching by invoice and an RFP was generated, 
-              // we intentionally don't send the RFP number to prioritize finding the invoice record.
-            }
-            this.$root.triggerLoading("Searching record(s)...", 0);
-            google.script.run
-              .withSuccessHandler((res) => {
-                this.$root.isLoading = false;
-                if (res.status === "ALREADY_PAID") {
-                  // 1. Clear the particulars to ensure no "paid" data is shown
-                  if (this.submissionMode !== 'GENERATED') {
+    this.rfpError = ""; // Clear any existing guidance messages
+    this.searchType = searchSource;
+
+    // 1. FLOW GUIDANCE: Check for Source File
+    if (!this.header.sourceFileName) {
+        this.rfpError = "Please select a 'Source File' above before searching.";
+        return;
+    }
+
+    // 2. FLOW GUIDANCE: Check for input value based on source
+    const term = (searchSource === 'RFP' ? this.header.rfpNo : this.header.invoiceNo).trim();
+    if (!term) {
+        this.rfpError = `Please input a valid ${searchSource} number to search.`;
+        return;
+    }
+
+    this.$root.triggerLoading(`Searching ${searchSource} records...`, 0);
+
+    // 3. Define search parameters
+    let rfpToSearch = "";
+    let invToSearch = "";
+    
+    if (searchSource === 'RFP') {
+        rfpToSearch = this.header.rfpNo;
+    } else {
+        invToSearch = this.header.invoiceNo;
+        // NOTE: We don't send RFP when searching Invoice so the backend can 
+        // find the master record regardless of the current generated RFP ID.
+    }
+
+    google.script.run
+        .withSuccessHandler((res) => {
+            this.$root.isLoading = false;
+
+            // Handle PAID records
+            if (res.status === "ALREADY_PAID") {
+                if (this.submissionMode !== 'GENERATED') {
                     this.initParticulars();
-                    // 2. Clear the specific input used to search so they can't try again with the same value
                     if (searchSource === 'RFP') this.header.rfpNo = "";
                     else this.header.invoiceNo = "";
-                  }
-                  // 3. Inform the user with a strong alert
-                  return this.$root.showCustomAlert(
-                    "Action Blocked: Already Paid",
-                    res.message || "This record has a 'PAID' status and cannot be edited.",
-                    "warning"
-                  );
                 }
-                if (res.status === "FOUND") {
-                  const matches = res.data;
-                  if (matches.length === 1) {
+                return this.$root.showCustomAlert(
+                    "Action Blocked: Already Paid",
+                    res.message || "This record has a 'PAID' status and cannot be modified.",
+                    "warning"
+                );
+            }
+
+            // Handle Found records
+            if (res.status === "FOUND") {
+                const matches = res.data;
+                
+                if (matches.length === 1) {
+                    // Logic update: Ensure that if an Invoice search found a match,
+                    // we guide the system to adopt that record's data entirely.
+                    if (searchSource === 'INVOICE') {
+                        this.submissionMode = "FETCHED"; // This allows existing RFPs to be synced
+                    }
                     this.populateForm(matches[0]);
-                  } else if (matches.length > 1) {
+                } else if (matches.length > 1) {
                     this.searchResults = matches;
                     this.isSearchModalOpen = true;
-                  }
-                } else if (res.status === "NOT_FOUND") {
-                  this.$root.showCustomAlert("Not Found", "No matching records found for this " + searchSource, "info");
                 }
-              })
-              .withFailureHandler((err) => {
-                this.$root.isLoading = false;
-                this.$root.showCustomAlert("System Error", err.message, "error");
-              })
-              .getRfpDataAdvanced(
-                this.header.sourceFileName,
-                rfpToSearch,
-                invToSearch
-              );
-          },
+            } 
+            
+            // Handle Not Found
+            else if (res.status === "NOT_FOUND") {
+                this.rfpError = `No record matching ${term} was found in the ${this.header.sourceTabName} tab.`;
+                this.$root.showCustomAlert("Not Found", "No matching database record exists for this query.", "info");
+            }
+        })
+        .withFailureHandler((err) => {
+            this.$root.isLoading = false;
+            this.rfpError = "System error during search. Please check your connection.";
+            this.$root.showCustomAlert("Search Error", err.message, "error");
+        })
+        .getRfpDataAdvanced(
+            this.header.sourceFileName,
+            rfpToSearch,
+            invToSearch
+        );
+},
           selectSourceFile(file) {
             // Sets visible name for the input box
             this.header.sourceFileName = file.name;
@@ -2137,14 +2175,12 @@ const FormRequestView = {
            * searching for invoices after an ID has been generated.
            */
           populateForm(raw) {
-            // BUG FIX 1: Do not change status to 'FETCHED' if the user just generated an RFP.
-            // This ensures the RFP search button stays disabled (grayed out).
-            if (this.submissionMode !== "GENERATED") {
-              this.submissionMode = "FETCHED";
-            }
-            // BUG FIX 2: Protect Header Identification Fields
-            // We only adopt the searched record's RFP number if we aren't in 'GENERATED' mode.
-            if (raw["RFP|PEF NO."] && this.submissionMode !== "GENERATED") {
+            // Change mode to FETCHED because we found an existing record in the database
+            this.submissionMode = "FETCHED";
+
+            // Overwrite RFP number if it exists in the database record, 
+            // even if one was already generated or typed.
+            if (raw["RFP|PEF NO."]) {
               this.header.rfpNo = raw["RFP|PEF NO."];
             }
             // We update the invoice number if found, but don't clear it if search is empty
@@ -2236,23 +2272,34 @@ const FormRequestView = {
               })
               .getPreviousParticipantEmails();
           },
-          generateRfp() {
-            this.$root.triggerLoading("Generating RFP...", 0);
-            google.script.run
-              .withSuccessHandler((id) => {
-                this.$root.isLoading = false;
-                this.header.rfpNo = id;
-                this.submissionMode = "GENERATED"; // THIS DISABLES THE RFP SEARCH BUTTON
-                this.initParticulars();
-                if (!this.header.dueDate)
-                  this.header.dueDate = new Date().toISOString().split("T")[0];
-              })
-              .withFailureHandler((err) => {
-                this.$root.isLoading = false;
-                this.$root.showCustomAlert("Error", "Generation failed: " + err, "error");
-              })
-              .generateRfpNumber();
-          },
+          // NEW HANDLER FOR GENERATE BUTTON
+handleGenerateClick() {
+  // If there's already data and it's not currently being cleared
+  if (this.header.rfpNo.trim() !== "") {
+    this.rfpError = "Clear the current RFP field first to enable ID generation.";
+    // Reset message after 5 seconds
+    setTimeout(() => { this.rfpError = ""; }, 5000);
+    return;
+  }
+  this.generateRfp(); // Call the actual generation script
+},
+
+generateRfp() {
+  this.rfpError = "";
+  this.$root.triggerLoading("Generating RFP...", 0);
+  google.script.run
+    .withSuccessHandler((id) => {
+      this.$root.isLoading = false;
+      this.header.rfpNo = id;
+      this.submissionMode = "GENERATED";
+      this.initParticulars();
+    })
+    .withFailureHandler((err) => {
+      this.$root.isLoading = false;
+      this.rfpError = "Generation failed. Please try again.";
+    })
+    .generateRfpNumber();
+},
           isAmountField(f) {
             return ["CONTRACT AMOUNT", "SOA AMOUNT"].includes(f);
           },
@@ -2416,6 +2463,7 @@ const FormRequestView = {
               participants: formattedParticipants,
               tableFields: this.tableFields,
               userAppEmail: appUserEmail,
+              preparedByName: this.$root.currentUser,
               meta: {
                 mode: this.submissionMode || "MANUAL",
                 timestamp: new Date().toISOString()
