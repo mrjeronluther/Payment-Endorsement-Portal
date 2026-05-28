@@ -568,6 +568,7 @@ function generateRfpNumber() {
  * 4. Multi-layered Transaction Security (Locks, Cache, Sharding)
  */
 function processSubmission(p) {
+  
     const lock = LockService.getScriptLock();
 
     // SECURE LOCK: Prevent concurrent write collisions (Wait up to 45 seconds)
@@ -596,8 +597,12 @@ function processSubmission(p) {
             p.header.sourceTabName && p.header.sourceTabName.trim() !== "" ? p.header.sourceTabName.trim() : "N/A";
 
         // 2. TRANSACTIONAL SECURITY (Debouncing & Duplicates)
-        if (rfpNo !== "" && !isRfpUnique(rfpNo)) {
-            throw new Error("ALREADY RECORDED: This RFP No. (" + rfpNo + ") is already in the registry.");
+        // Logic: If the mode is 'FETCHED', we allow the RFP to exist in the registry 
+        // because the user is specifically acting on an existing database record.
+        const isFetchedMode = p.meta && p.meta.mode === "FETCHED";
+
+        if (rfpNo !== "" && !isFetchedMode && !isRfpUnique(rfpNo)) {
+            throw new Error("ALREADY RECORDED: This RFP No. (" + rfpNo + ") is already in the registry and cannot be used for a new request.");
         }
 
         if (rfpNo !== "") {
@@ -665,12 +670,13 @@ function processSubmission(p) {
             .filter((x) => x.tag === "Secondary")
             .map((x) => x.email)
             .join(", ");
+    
 
         // 6. FINAL ROW MAPPING (Matches your database column architecture)
         const rowData = [
             "TXN-" + Utilities.getUuid().split("-")[0].toUpperCase(), // Col 1: System TXN ID
             new Date(), // Col 2: Processing Date
-            submissionEmail, // Col 3: APP LOGGED-IN USER (Updated)
+            (p.preparedByName || "N/A") + " (" + submissionEmail + ")", // Col 3: Now shows "Jeron Luther Castro (email@domain.com)"
             primaryRecipients, // Col 4: Primary To
             secondaryRecipients, // Col 5: CC Emails
             rfpNo || "N/A", // Col 6: RFP Number
@@ -830,120 +836,147 @@ function performStrictSearch(selectedSource, rfpInput, invoiceInput) {
     return matches;
 }
 
-/**
- * Generates a Secure PDF with Logo and Sanity Checks
- */
 function createRfpPdf(p, folder) {
-    const LOGO_FILE_ID = "1QZ3XkRk1x-p_GFSjKhQO8i4dmIVzE1dG";
+  const LOGO_FILE_ID = "1QZ3XkRk1x-p_GFSjKhQO8i4dmIVzE1dG"; // Keep your logo ID
 
-    // --- LOGO FETCHING LOGIC ---
-    let logoBase64 = "";
-    try {
-        const logoFile = DriveApp.getFileById(LOGO_FILE_ID);
-        logoBase64 =
-            "data:" + logoFile.getMimeType() + ";base64," + Utilities.base64Encode(logoFile.getBlob().getBytes());
-    } catch (e) {
-        console.warn("Logo could not be loaded: " + e.message);
-    }
+  let logoBase64 = "";
+  try {
+    const logoFile = DriveApp.getFileById(LOGO_FILE_ID);
+    logoBase64 = "data:" + logoFile.getMimeType() + ";base64," + Utilities.base64Encode(logoFile.getBlob().getBytes());
+  } catch (e) {
+    console.warn("Logo could not be loaded: " + e.message);
+  }
 
-    // --- SECURE PARTICULARS TABLE GENERATION ---
-    let tableRowsHtml = "";
-    for (let i = 0; i < p.tableFields.length; i += 3) {
-        tableRowsHtml += "<tr>";
-        for (let j = 0; j < 3; j++) {
-            const field = p.tableFields[i + j];
-            if (field) {
-                tableRowsHtml += `
-          <td class="grid-cell" style="width: 33.33%;">
-             <div class="field-label">${safeValue(field.replace(/_/g, " "))}</div>
-             <div class="field-value">${safeValue(String(p.particulars[field] || "—"))}</div>
-          </td>`;
-            } else {
-                tableRowsHtml += `<td class="grid-cell" style="width: 33.33%;"></td>`;
-            }
-        }
-        tableRowsHtml += "</tr>";
-    }
+  // Map values for cleaner access (matching Frontend names)
+  const part = p.particulars;
+  const header = p.header;
+  const preparedBy = p.preparedByName || "Unknown User";
 
-    // --- STATIC NOTE LINES ---
-    let noteLinesHtml = "";
-    for (let n = 0; n < 5; n++) {
-        noteLinesHtml += '<div class="note-line"></div>';
-    }
-
-    // --- COMPLETE SECURE HTML TEMPLATE ---
-    const html = `
+  const html = `
   <html>
   <head>
     <style>
-      @page { size: letter portrait; margin: 0.35in; }
-      body { font-family: 'Arial', sans-serif; font-size: 10pt; color: #000; line-height: 1.2; margin: 0; }
-      .brand-wrapper { text-align: center; margin-bottom: 8px; width: 100%; }
-      .logo-img { width: 170px; height: auto; }
-      .doc-title { 
-        text-align: center; font-size: 17pt; font-weight: bold; 
-        text-transform: uppercase; border-bottom: 3px solid #000;
-        padding-bottom: 8px; margin-top: 2px; margin-bottom: 15px;
-      }
-      .meta-table { width: 100%; margin-bottom: 15px; border-collapse: collapse; }
-      .meta-label { font-size: 7.5pt; color: #555; text-transform: uppercase; font-weight: bold; }
-      .meta-value { font-size: 11pt; font-weight: bold; border-bottom: 1px solid #ccc; padding: 2px 0; }
-      .particulars-grid { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1.5px solid #000; }
-      .grid-cell { border: 1px solid #000; padding: 6px 8px; vertical-align: top; word-wrap: break-word; min-height: 42px; }
-      .field-label { font-size: 7pt; color: #333; text-transform: uppercase; font-weight: bold; margin-bottom: 3px; }
-      .field-value { font-size: 9.5pt; font-weight: bold; color: #000; }
-      .notes-title { font-size: 9pt; font-weight: bold; text-transform: uppercase; margin-top: 15px; margin-bottom: 5px; }
-      .note-line { width: 100%; height: 23px; border-bottom: 1px solid #000; }
-      .sig-table { margin-top: 35px; width: 100%; border-collapse: collapse; }
-      .sig-line { border-top: 1.5px solid #000; width: 85%; margin: 35px auto 0 auto; padding-top: 6px; font-size: 8pt; font-weight: bold; text-align: center; text-transform: uppercase; }
+      @page { size: letter; margin: 0.2in; }
+      body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9pt; color: #000; margin: 0; padding: 20px; }
+      
+      /* Header Layout */
+      .header-container { border-bottom: 4px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+      .header-table { width: 100%; border-collapse: collapse; }
+      .header-title { font-size: 22pt; font-weight: 900; margin: 0; text-align: right; }
+      .payor-subtitle { font-size: 10pt; font-weight: bold; text-align: right; }
+      .rfp-no-display { font-size: 10pt; color: #666; font-weight: bold; margin-top: 5px; text-align: right; }
+      .rfp-val { font-size: 14pt; color: #000; }
+
+      /* Metadata Tables */
+      .section-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: fixed; }
+      .section-table td { border: 1px solid #000; padding: 10px; vertical-align: top; }
+      
+      .label { font-size: 7pt; color: #555; font-weight: bold; text-transform: uppercase; margin-bottom: 3px; }
+      .value { font-size: 10pt; font-weight: bold; color: #000; }
+      .amt-value { font-size: 11pt; font-weight: bold; color: #0d6efd; }
+
+      /* Signature Section */
+      .sig-section { margin-top: 50px; }
+      .sig-table { width: 100%; border-collapse: collapse; }
+      .sig-line-container { text-align: center; width: 45%; }
+      .sig-name { font-size: 11pt; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 5px; }
+      .sig-label { font-size: 8.5pt; font-weight: bold; text-transform: uppercase; }
+      .sig-sub { font-size: 7pt; color: #888; }
+
+      /* Purpose Box */
+      .remarks-box { margin-top: 15px; border: 1px dashed #777; padding: 10px; min-height: 60px; font-size: 10pt; line-height: 1.4; }
     </style>
   </head>
   <body>
-    <div class="brand-wrapper">${logoBase64 ? `<img src="${logoBase64}" class="logo-img">` : ""}</div>
-    <div class="doc-title">Request for Payment</div>
+    <!-- Header -->
+    <div class="header-container">
+      <table class="header-table">
+        <tr>
+          <td>${logoBase64 ? `<img src="${logoBase64}" style="width: 280px;">` : ""}</td>
+          <td>
+            <div class="header-title">REQUEST FOR PAYMENT</div>
+            <div class="payor-subtitle">${safeValue(part['PAYOR NAME'] || '—')}</div>
+            <div class="rfp-no-display">RFP NO: <span class="rfp-val">${safeValue(header.rfpNo)}</span></div>
+          </td>
+        </tr>
+      </table>
+    </div>
 
-    <table class="meta-table">
+    <!-- Date Row -->
+    <table class="section-table" style="background: #f9f9f9;">
       <tr>
-        <td style="width: 45%;">
-          <div class="meta-label">RFP Number</div>
-          <div class="meta-value" style="font-size: 14pt;">${safeValue(p.header.rfpNo)}</div>
+        <td>
+          <div class="label">Date Requested</div>
+          <div class="value">${safeValue(header.date)}</div>
         </td>
-        <td style="width: 27.5%; vertical-align: bottom;">
-          <div class="meta-label">Date Requested</div>
-          <div class="meta-value">${safeValue(p.header.date)}</div>
-        </td>
-        <td style="width: 27.5%; vertical-align: bottom;">
-          <div class="meta-label">Due Date</div>
-          <div class="meta-value">${safeValue(p.header.dueDate)}</div>
+        <td>
+          <div class="label">Expected Due Date</div>
+          <div class="value" style="color: #d63384;">${safeValue(header.dueDate)}</div>
         </td>
       </tr>
     </table>
 
-    <table class="particulars-grid">
-      ${tableRowsHtml}
-    </table>
-
-    <div class="notes-title">NOTES / REMARKS:</div>
-    ${noteLinesHtml}
-
-    <table class="sig-table">
+    <!-- Section 1: Entities -->
+    <table class="section-table">
       <tr>
-        <td><div class="sig-line">Requested By</div></td>
-        <td><div class="sig-line">Verified By</div></td>
-        <td><div class="sig-line">Approved By</div></td>
+        <td><div class="label">Payor Name</div><div class="value">${safeValue(part['PAYOR NAME'] || '—')}</div></td>
+        <td><div class="label">Payee Name</div><div class="value">${safeValue(part['PAYEE NAME'] || '—')}</div></td>
+      </tr>
+      <tr>
+        <td><div class="label">Property</div><div class="value">${safeValue(part['PROPERTY'] || '—')}</div></td>
+        <td><div class="label">Location</div><div class="value">${safeValue(part['LOCATION'] || '—')}</div></td>
       </tr>
     </table>
+
+    <!-- Section 2: Financials -->
+    <table class="section-table">
+      <tr>
+        <td style="width: 20%;"><div class="label">Contract Amt</div><div class="amt-value">${safeValue(part['CONTRACT AMOUNT'] || '0.00')}</div></td>
+        <td style="width: 20%;"><div class="label">Invoice No</div><div class="value">${safeValue(header.invoiceNo || '—')}</div></td>
+        <td style="width: 20%;"><div class="label">SOA Amount</div><div class="amt-value">${safeValue(part['SOA AMOUNT'] || '0.00')}</div></td>
+        <td style="width: 20%;"><div class="label">Status</div><div class="value">${safeValue(part['GENERAL STATUS'] || '—')}</div></td>
+        <td style="width: 20%;"><div class="label">Sector</div><div class="value">${safeValue(part['SECTOR'] || '—')}</div></td>
+      </tr>
+    </table>
+
+    <!-- Section 3: Service -->
+    <table class="section-table" style="background: #fafafa;">
+      <tr>
+        <td><div class="label">Year</div><div class="value">${safeValue(part['YEAR'])}</div></td>
+        <td><div class="label">Month</div><div class="value">${safeValue(part['MONTH'])}</div></td>
+        <td><div class="label">Billing Period</div><div class="value">${safeValue(part['BILLING PERIOD'])}</div></td>
+        <td><div class="label">Contract No</div><div class="value">${safeValue(part['CONTRACT NO'])}</div></td>
+        <td><div class="label">Service Kind</div><div class="value">${safeValue(part['KINDS OF SERVICE'])}</div></td>
+      </tr>
+    </table>
+
+    <!-- Purpose -->
+    <div>
+      <div class="label" style="font-size: 9pt; margin-bottom: 5px;">PURPOSE / REMARKS:</div>
+      <div class="remarks-box">${safeValue(header.remarks || 'No remarks provided.')}</div>
+    </div>
+
+    <!-- Signatories -->
+    <div class="sig-section">
+      <table class="sig-table">
+        <tr>
+          <td class="sig-line-container">
+            <div class="sig-name">${safeValue(preparedBy)}</div>
+            <div class="sig-label">Prepared By</div>
+            <div class="sig-sub">(Signature Over Printed Name)</div>
+          </td>
+          <td style="width: 55%;"></td> <!-- Empty cell removes Approved By -->
+        </tr>
+      </table>
+    </div>
   </body>
   </html>`;
 
-    // Create PDF
-    const pdfBlob = Utilities.newBlob(html, "text/html").getAs("application/pdf").setName(`RFP_${p.header.rfpNo}.pdf`);
-    const file = folder.createFile(pdfBlob);
-
-    // Set explicit security permissions
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.NONE);
-
-    return file.getUrl();
+  // PDF Creation Logic remains the same
+  const pdfBlob = Utilities.newBlob(html, "text/html").getAs("application/pdf").setName(`RFP_${header.rfpNo}.pdf`);
+  const file = folder.createFile(pdfBlob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.NONE);
+  return file.getUrl();
 }
 
 /**
